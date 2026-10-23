@@ -32,4 +32,4 @@ As fotos são reduzidas automaticamente, mas o navegador guarda cerca de 5 MB po
 ## Créditos
 
 Design: Sophia Lapertosa.
-Fontes: Anton, Archivo, Instrument Serif, Libre Caslon Text e IBM Plex Mono (Google Fonts, licença OFL).
+Fontes: Anton, Archivo, Instrument Serif, Libre Caslon Condensed e IBM Plex Mono (Google Fonts, licença OFL).
