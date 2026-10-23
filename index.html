@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Detector de Mentiras</title>
+<meta name="description" content="Checagem ao vivo de debate: registra cada mentira, dispara o alarme e mostra a verdade e a fonte.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@500;700;800&family=IBM+Plex+Mono:wght@500&family=Instrument+Serif:ital@0;1&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&display=swap">
+<style>
+/* Layout: gerador na horizontal — peça 4:5 no estilo jornal-recortado (foto em meio-tom sobre bloco lilás + sirene) ao lado da mesa de controle */
+:root{
+  --paper:#ececed; --paper-2:#e2e2e5; --ink:#141416; --ink-2:#55555c;
+  --lilac:#9d9de6; --alarm:#e5372b; --truth:#1d8a4b; --white:#fbfbfc;
+  --display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --cond:"Anton",Impact,"Arial Narrow",sans-serif;
+  --italic:"Instrument Serif",Georgia,serif;
+  --serif:"Libre Caslon Text",Georgia,"Times New Roman",serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-size:14px;-webkit-font-smoothing:antialiased}
+img{max-width:100%}
+body{background:var(--paper-2);color:var(--ink);font-family:var(--display);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 48px}
+.wrap{max-width:1080px;margin:0 auto;display:grid;grid-template-columns:minmax(0,560px) minmax(0,1fr);gap:28px;align-items:start}
+@media (max-width:900px){.wrap{grid-template-columns:minmax(0,1fr)}}
+
+/* ---------- PEÇA ---------- */
+.poster{position:relative;aspect-ratio:4/5;max-width:100%;width:100%;background:var(--paper);color:var(--ink);overflow:hidden;container-type:inline-size;
+  box-shadow:0 1px 0 rgba(0,0,0,.06),0 18px 40px -24px rgba(0,0,0,.35)}
+.poster::before{content:"";position:absolute;inset:0;opacity:.5;pointer-events:none;background:repeating-linear-gradient(0deg,transparent 0 2.2cqw,rgba(0,0,0,.025) 2.2cqw 2.35cqw)}
+.poster::after{content:"";position:absolute;inset:0;background:#fff;mix-blend-mode:difference;opacity:0;pointer-events:none;z-index:20}
+.poster.alarming::after{animation:invert .3s steps(2) 5}
+@keyframes invert{0%{opacity:1}100%{opacity:0}}
+.poster.drag{outline:4px dashed var(--lilac);outline-offset:-10px}
+.p-in{position:absolute;inset:0;display:flex;flex-direction:column;padding:6.5cqw 10cqw 6cqw}
+.p-in>*{flex-shrink:0}
+[hidden]{display:none!important}
+
+.rule{display:flex;justify-content:space-between;align-items:center;border-top:1.5px solid var(--ink);border-bottom:1.5px solid var(--ink);padding:1.3cqw 0;font-weight:700;font-size:2.3cqw;letter-spacing:.04em;text-transform:uppercase}
+.live{display:inline-flex;align-items:center;gap:1.2cqw}
+.dot{width:1.7cqw;height:1.7cqw;border-radius:50%;background:currentColor;opacity:.4}
+body.running .dot{background:var(--alarm);opacity:1;animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:.2}}
+
+.p-in>.photo{flex:1 1 0;min-height:20cqw}
+.photo{position:relative;margin-top:3.5cqw;margin-left:-10cqw;width:80cqw;background:var(--lilac);transition:background .15s}
+#photoCv{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:cover}
+.photo .ph-empty{position:absolute;inset:0;display:grid;place-items:center;padding:0 22cqw 0 12cqw;text-align:center;font-weight:700;font-size:2.4cqw;letter-spacing:.06em;text-transform:uppercase;line-height:1.4}
+.poster.alarming .photo{animation:flash .28s steps(2) 6}
+@keyframes flash{0%{background:var(--alarm)}100%{background:var(--lilac)}}
+.siren{position:absolute;right:-6cqw;bottom:-7cqw;width:30cqw;height:30cqw;pointer-events:none;z-index:3}
+
+.lede{margin-top:5.5cqw;line-height:.88}
+.lede .a{display:block;font-family:var(--cond);font-size:5.4cqw;text-transform:uppercase;letter-spacing:.01em}
+.lede .b{display:block;font-family:var(--cond);font-size:13.5cqw;white-space:nowrap;text-transform:uppercase;letter-spacing:-.005em}
+.lede .c{display:block;font-family:var(--italic);font-style:italic;font-size:10.5cqw;letter-spacing:-.02em;line-height:.85}
+.poster.alarming .lede .b{color:var(--alarm)}
+
+.check{display:grid;gap:1.6cqw;padding-top:3cqw}
+.row{display:grid;grid-template-columns:15cqw minmax(0,1fr);gap:2.2cqw;align-items:baseline}
+.tag{font-weight:800;font-size:2.2cqw;letter-spacing:.06em;text-transform:uppercase;padding:.6cqw 1.2cqw;justify-self:start;line-height:1.1}
+.tag.lie{background:var(--alarm);color:var(--white)}
+.tag.truth{background:var(--truth);color:var(--white)}
+.tag.src{border:1.2px solid var(--ink)}
+.t-lie{font-family:var(--serif);font-size:3.2cqw;line-height:1.25;text-decoration:line-through;text-decoration-color:var(--alarm);text-decoration-thickness:.5cqw}
+.t-truth{font-family:var(--serif);font-size:3.2cqw;line-height:1.25}
+.t-src{font-family:var(--mono);font-size:2.3cqw;word-break:break-all;line-height:1.3}
+.t-src a{color:inherit}
+.meta{font-weight:700;font-size:2.2cqw;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-2)}
+.cl2,.cl3{display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden}.cl2{-webkit-line-clamp:2}.cl3{-webkit-line-clamp:3}
+.foot{display:flex;justify-content:space-between;align-items:center;border-bottom:1.5px solid var(--ink);padding-bottom:1.2cqw;margin-top:3cqw;font-weight:700;font-size:2.2cqw;letter-spacing:.05em;text-transform:uppercase}
+.foot svg{width:9cqw;height:auto}
+
+/* ---------- MESA DE CONTROLE ---------- */
+.desk{display:grid;gap:20px;min-width:0}
+.panel{background:var(--paper);padding:18px;display:grid;gap:14px;min-width:0}
+.panel h2{margin:0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.panel h2 span{font-weight:500;color:var(--ink-2);letter-spacing:.02em;text-transform:none}
+.btns{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button{font:700 13px/1 var(--display);letter-spacing:.03em;border:1.5px solid var(--ink);background:var(--white);color:var(--ink);padding:11px 14px;cursor:pointer}
+button:hover{background:var(--paper-2)}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--lilac);outline-offset:2px}
+button.primary{background:var(--ink);color:var(--white)}
+button.alarm{background:var(--alarm);border-color:var(--alarm);color:var(--white)}
+button.alarm:hover{filter:brightness(.92)}
+button.ghost{border-color:transparent;background:transparent;padding:6px 8px;font-weight:500;color:var(--ink-2)}
+label{display:grid;gap:6px;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+input,textarea{font:400 15px/1.4 var(--serif);border:1.5px solid var(--ink);background:var(--white);color:var(--ink);padding:9px 10px;width:100%;text-transform:none;letter-spacing:0}
+input[type=file]{font:500 13px var(--display);padding:7px}
+textarea{resize:vertical;min-height:58px}
+input[type=url]{font-family:var(--mono);font-size:13px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:480px){.two{grid-template-columns:1fr}}
+.hint{font-size:12px;color:var(--ink-2);line-height:1.45}
+kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--ink-2);padding:1px 4px;background:var(--white)}
+.err{color:var(--alarm);font-size:13px;font-weight:700}
+.log{display:grid;max-height:520px;overflow:auto}
+.item{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:12px;padding:12px 0;border-top:1px solid #c9c9ce;align-items:start;cursor:pointer}
+.item:first-child{border-top:0}
+.thumb{width:56px;height:56px;background:var(--lilac) center/cover no-repeat;display:grid;place-items:center;font-family:var(--mono);font-size:11px}
+.item .who{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}
+.item .l{font-family:var(--serif);text-decoration:line-through;text-decoration-color:var(--alarm);margin:2px 0}
+.item .v{font-family:var(--serif);color:var(--truth)}
+.item a{font-family:var(--mono);font-size:12px;color:var(--ink-2);word-break:break-all}
+.item.on{background:linear-gradient(90deg,rgba(157,157,230,.25),transparent)}
+.item-actions{display:grid;gap:2px}
+.ex{font-size:10px;font-weight:800;background:var(--lilac);padding:2px 5px;margin-left:6px;letter-spacing:.06em;color:var(--ink)}
+
+/* ---------- GERADOR NA HORIZONTAL (telas largas) ---------- */
+@media (min-width:1100px){
+  html,body{height:100%}
+  body{padding-block:20px;overflow:hidden}
+  .wrap{max-width:none;height:100%;grid-template-columns:min(560px,calc((100vh - 40px)*.8)) minmax(0,1fr);align-items:stretch}
+  .wrap>.poster{align-self:start}
+  .desk{height:100%;min-height:0;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);align-items:stretch}
+  .desk>.panel:first-child{grid-column:1/-1}
+  .desk>#form,.desk>.logp{overflow:auto;align-content:start;min-height:0}
+  .log{max-height:none;overflow:visible}
+}
+body.broadcast .desk{display:none}
+body.broadcast .wrap{grid-template-columns:minmax(0,min(560px,calc((100vh - 60px)*.8)));justify-content:center}
+.exit{position:fixed;right:max(12px,env(safe-area-inset-right,0px));bottom:max(12px,env(safe-area-inset-bottom,0px));display:none;opacity:.25}
+.exit:hover{opacity:1}
+body.broadcast .exit{display:block}
+@media (prefers-reduced-motion:reduce){body.running .dot,.poster.alarming .photo{animation:none}.poster.alarming::after{animation:invert .6s steps(1) 1}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <section class="poster" id="poster" aria-label="Peça de checagem ao vivo">
+    <div class="p-in">
+      <div class="rule"><span class="live"><i class="dot"></i><span id="liveTxt">Pausado</span></span><span id="showName"></span></div>
+      <div class="photo" id="photo">
+        <canvas id="photoCv" hidden></canvas>
+        <div class="ph-empty" id="phEmpty">Foto entra aqui. Arraste uma imagem para a peça ou use o campo Foto.</div>
+        <canvas class="siren" id="siren" aria-hidden="true"></canvas>
+      </div>
+      <div class="lede"><span class="a">Até agora,</span><span class="b" id="count">0 mentiras</span><span class="c">foram ditas.</span></div>
+      <div class="check" id="check"></div>
+      <div class="foot"><span id="footTxt"></span>
+        <svg viewBox="0 0 90 40" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" aria-hidden="true"><path d="M4 15h50V5l30 15-30 15V25H4z"/></svg></div>
+    </div>
+  </section>
+
+  <div class="desk">
+    <div class="panel">
+      <h2>Controle <span>atalho do cronômetro: <kbd>espaço</kbd></span></h2>
+      <div class="btns">
+        <button class="primary" id="startBtn" type="button">Iniciar debate</button>
+        <button id="resetBtn" type="button">Zerar</button>
+        <button id="soundBtn" type="button" aria-pressed="true">Som do alarme: ligado</button>
+        <button id="htBtn" type="button" aria-pressed="true">Foto em meio-tom</button>
+        <button id="bcBtn" type="button">Modo transmissão</button>
+      </div>
+      <div class="hint">O cronômetro não aparece na peça. Ele corre por trás e marca o minuto de cada mentira. Tempo agora: <b id="clockSmall" style="font-family:var(--mono)">00:00:00</b></div>
+      <div class="two">
+        <label>Nome do debate<input id="nameIn" maxlength="40"></label>
+        <label>Rodapé<input id="footIn" maxlength="40"></label>
+      </div>
+    </div>
+
+    <form class="panel" id="form" novalidate>
+      <h2>Registrar mentira <span><kbd>Ctrl</kbd>+<kbd>Enter</kbd> dispara</span></h2>
+      <div class="two">
+        <label>Quem disse<input id="who" placeholder="Candidato(a)"></label>
+        <label>Foto<input id="photoIn" type="file" accept="image/*"></label>
+      </div>
+      <div class="hint">Sem foto, a peça reaproveita a última foto de quem disse.</div>
+      <label>O que foi dito (mentira)<textarea id="lie" placeholder="Frase como foi dita no debate"></textarea></label>
+      <label>O que é verdade<textarea id="truth" placeholder="O dado correto, em uma ou duas frases"></textarea></label>
+      <label>Fonte (link)<input id="src" type="url" placeholder="https://"></label>
+      <div class="err" id="err" hidden></div>
+      <div class="btns"><button class="alarm" type="submit">Disparar alarme</button></div>
+    </form>
+
+    <div class="panel logp">
+      <h2>Mentiras registradas <span id="logCount"></span></h2>
+      <div class="hint">Clique em um item para exibi-lo na peça. Apague os exemplos antes de ir ao ar.</div>
+      <div class="log" id="log"></div>
+      <input type="file" id="swapIn" accept="image/*" hidden>
+    </div>
+  </div>
+</div>
+<button class="exit" id="exitBc" type="button">Sair do modo transmissão</button>
+
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+const KEY='detector-mentiras-v2';
+let state={elapsed:0,items:[],shown:null,name:'Debate 2026',foot:'Checagem ao vivo',sound:true,ht:true};
+let running=false,t0=0;
+try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s)state=Object.assign(state,s)}catch(e){}
+if(!state.items.length&&!state.seeded){
+  state.items=[
+    {id:1,t:754,who:'Candidato A',lie:'“A obra foi entregue em 2024, dentro do prazo.”',truth:'A obra segue em execução e teve o prazo aditado duas vezes, segundo o portal de transparência.',src:'https://portaldatransparencia.gov.br',ex:true},
+    {id:2,t:1622,who:'Candidato B',lie:'“O desemprego na região dobrou no último ano.”',truth:'A taxa de desocupação oscilou dentro da margem da pesquisa no período, segundo a PNAD Contínua.',src:'https://www.ibge.gov.br/estatisticas/sociais/trabalho.html',ex:true}];
+  state.shown=2;state.seeded=true;
+}
+let saveWarned=false;
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){if(!saveWarned){saveWarned=true;showErr('O navegador ficou sem espaço para guardar mais fotos. Apague itens antigos para continuar salvando.')}}};
+const now=()=>state.elapsed+(running?(performance.now()-t0)/1000:0);
+const fmt=s=>{s=Math.floor(s);return[Math.floor(s/3600),Math.floor(s/60)%60,s%60].map(n=>String(n).padStart(2,'0')).join(':')};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const safeUrl=u=>/^https?:\/\//i.test(u||'')?u:'';
+const shortUrl=u=>{u=u.replace(/^https?:\/\/(www\.)?/,'').replace(/\/$/,'');return u.length>52?u.slice(0,50)+'…':u};
+function showErr(m){const e=$('err');e.textContent=m;e.hidden=!m}
+
+const current=()=>state.items.find(i=>i.id===state.shown)||state.items[state.items.length-1];
+function photoFor(it){
+  if(!it)return null;if(it.photo)return it.photo;
+  const k=(it.who||'').trim().toLowerCase();if(!k)return null;
+  const same=state.items.filter(i=>i.photo&&(i.who||'').trim().toLowerCase()===k).sort((a,b)=>b.t-a.t);
+  return same[0]?.photo||null;
+}
+
+/* fotos: reduz para caber no navegador */
+function loadFile(file){return new Promise((res,rej)=>{
+  if(!file||!file.type.startsWith('image/'))return rej(new Error('Escolha um arquivo de imagem.'));
+  const r=new FileReader();r.onerror=()=>rej(new Error('Não deu para ler a imagem.'));
+  r.onload=()=>{const img=new Image();img.onload=()=>{
+    const M=1000,s=Math.min(1,M/Math.max(img.width,img.height)),c=document.createElement('canvas');
+    c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    res(c.toDataURL('image/jpeg',.82))};img.onerror=()=>rej(new Error('Formato de imagem não suportado.'));img.src=r.result};
+  r.readAsDataURL(file)})}
+
+/* foto em meio-tom no bloco lilás */
+const imgCache={};
+function getImg(src){return imgCache[src]||(imgCache[src]=new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=src}))}
+async function drawPhoto(){
+  const it=current(),src=photoFor(it),cv=$('photoCv');
+  $('phEmpty').hidden=!!src;cv.hidden=!src;if(!src)return;
+  const img=await getImg(src);if(!img||photoFor(current())!==src)return;
+  const box=$('photo').getBoundingClientRect(),dpr=Math.min(2,devicePixelRatio||1);
+  const W=Math.max(1,Math.round(box.width*dpr)),H=Math.max(1,Math.round(box.height*dpr));
+  cv.width=W;cv.height=H;const c=cv.getContext('2d');c.clearRect(0,0,W,H);
+  const s=Math.max(W/img.width,H/img.height),dw=img.width*s,dh=img.height*s,dx=(W-dw)/2,dy=(H-dh)*.35;
+  if(!state.ht){c.drawImage(img,dx,dy,dw,dh);return}
+  const step=Math.max(3,W/110),cols=Math.ceil(W/step),rows=Math.ceil(H/step);
+  const o=document.createElement('canvas');o.width=cols;o.height=rows;const oc=o.getContext('2d',{willReadFrequently:true});
+  oc.drawImage(img,dx/step,dy/step,dw/step,dh/step);const d=oc.getImageData(0,0,cols,rows).data;
+  c.fillStyle='#141416';
+  for(let y=0;y<rows;y++)for(let x=0;x<cols;x++){
+    const i=(y*cols+x)*4,l=(d[i]*.3+d[i+1]*.59+d[i+2]*.11)/255;
+    const v=Math.min(1,Math.max(0,(1-l)*1.25-.05));if(v<.04)continue;
+    c.beginPath();c.arc(x*step+step/2+(y%2?step/2:0),y*step+step/2,step*.62*Math.sqrt(v),0,7);c.fill();
+  }
+}
+
+function render(){
+  const it=current(),n=state.items.length;
+  $('count').textContent=n===1?'1 mentira':n+' mentiras';
+  document.querySelector('.lede .c').textContent=n===1?'foi dita.':'foram ditas.';
+  $('showName').textContent=state.name;$('footTxt').textContent=state.foot;
+  const box=$('check');
+  if(!it){box.innerHTML='<div class="meta">Aguardando</div><div class="row"><span class="tag truth">Verdade</span><div class="t-truth">Nenhuma mentira até aqui. O alarme toca quando a próxima for registrada.</div></div>'}
+  else{const u=safeUrl(it.src);
+    box.innerHTML=`<div class="meta">${esc(fmt(it.t))} · ${esc(it.who||'Sem identificação')}${it.ex?' · exemplo':''}</div>
+     <div class="row"><span class="tag lie">Mentira</span><div class="t-lie cl2">${esc(it.lie)}</div></div>
+     <div class="row"><span class="tag truth">Verdade</span><div class="t-truth cl3">${esc(it.truth)}</div></div>
+     <div class="row"><span class="tag src">Fonte</span><div class="t-src">${u?`<a href="${esc(u)}" target="_blank" rel="noopener">${esc(shortUrl(u))}</a>`:esc(it.src||'—')}</div></div>`}
+  drawPhoto();renderLog();
+}
+function renderLog(){
+  const items=[...state.items].sort((a,b)=>b.t-a.t);
+  $('logCount').textContent=items.length?items.length+' no total':'';
+  $('log').innerHTML=items.length?items.map(i=>{const p=photoFor(i);return`<div class="item${i.id===state.shown?' on':''}" data-id="${i.id}" tabindex="0" role="button" aria-label="Exibir na peça">
+    <div class="thumb" style="${p?`background-image:url('${p}')`:''}">${p?'':fmt(i.t).slice(0,5)}</div>
+    <div style="min-width:0"><div class="who">${esc(fmt(i.t))} · ${esc(i.who||'Sem identificação')}${i.ex?'<span class="ex">EXEMPLO</span>':''}</div>
+      <div class="l">${esc(i.lie)}</div><div class="v">${esc(i.truth)}</div>
+      ${safeUrl(i.src)?`<a href="${esc(i.src)}" target="_blank" rel="noopener">${esc(i.src)}</a>`:''}</div>
+    <div class="item-actions"><button class="ghost" data-photo="${i.id}" type="button">${i.photo?'Trocar foto':'Pôr foto'}</button><button class="ghost" data-del="${i.id}" type="button">Apagar</button></div></div>`}).join('')
+    :'<div class="hint">Nada registrado ainda.</div>';
+}
+let swapTarget=null;
+$('log').addEventListener('click',e=>{
+  const d=e.target.closest('[data-del]');
+  if(d){const id=+d.dataset.del;state.items=state.items.filter(i=>i.id!==id);if(state.shown===id)state.shown=null;save();render();return}
+  const ph=e.target.closest('[data-photo]');
+  if(ph){swapTarget=+ph.dataset.photo;$('swapIn').value='';$('swapIn').click();return}
+  const it=e.target.closest('.item');if(it&&!e.target.closest('a')){state.shown=+it.dataset.id;save();render()}
+});
+$('log').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.classList.contains('item')){state.shown=+e.target.dataset.id;save();render()}});
+async function setPhoto(id,file){
+  try{const url=await loadFile(file);const it=state.items.find(i=>i.id===id);if(!it)return;it.photo=url;save();render();showErr('')}
+  catch(err){showErr(err.message)}
+}
+$('swapIn').onchange=e=>{if(swapTarget&&e.target.files[0])setPhoto(swapTarget,e.target.files[0])};
+
+/* arrastar foto direto na peça: vai para o item exibido */
+const P=$('poster');
+P.addEventListener('dragover',e=>{e.preventDefault();P.classList.add('drag')});
+P.addEventListener('dragleave',()=>P.classList.remove('drag'));
+P.addEventListener('drop',e=>{e.preventDefault();P.classList.remove('drag');const f=e.dataTransfer.files[0],it=current();if(f&&it)setPhoto(it.id,f);else if(f)showErr('Registre uma mentira antes de pôr a foto.')});
+
+/* cronômetro (fica fora da peça) */
+function tick(){$('clockSmall').textContent=fmt(now());requestAnimationFrame(tick)}
+function setRun(r){
+  if(r===running)return;
+  if(r){t0=performance.now()}else{state.elapsed=now();save()}
+  running=r;document.body.classList.toggle('running',r);
+  $('liveTxt').textContent=r?'Ao vivo':'Pausado';
+  $('startBtn').textContent=r?'Pausar':(state.elapsed>0?'Retomar':'Iniciar debate');
+}
+$('startBtn').onclick=()=>setRun(!running);
+$('resetBtn').onclick=()=>{setRun(false);state.elapsed=0;save();$('startBtn').textContent='Iniciar debate'};
+
+/* alarme */
+let ctx,alarmUntil=0;
+function siren(){
+  if(!state.sound)return;
+  try{ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();
+    const o=ctx.createOscillator(),g=ctx.createGain(),t=ctx.currentTime;
+    o.type='square';o.connect(g);g.connect(ctx.destination);
+    for(let k=0;k<6;k++)o.frequency.setValueAtTime(k%2?660:880,t+k*.2);
+    g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.18,t+.03);
+    g.gain.setValueAtTime(.18,t+1.1);g.gain.exponentialRampToValueAtTime(.0001,t+1.25);
+    o.start(t);o.stop(t+1.3)}catch(e){}
+}
+function fire(){P.classList.remove('alarming');void P.offsetWidth;P.classList.add('alarming');setTimeout(()=>P.classList.remove('alarming'),1700);alarmUntil=performance.now()+1700;siren()}
+
+$('form').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const lie=$('lie').value.trim(),truth=$('truth').value.trim(),src=$('src').value.trim();
+  if(!lie||!truth)return showErr('Preencha a mentira e a verdade antes de disparar.');
+  if(src&&!safeUrl(src))return showErr('A fonte precisa ser um link começando com https://');
+  showErr('');
+  const it={id:Date.now(),t:Math.floor(now()),who:$('who').value.trim(),lie,truth,src};
+  const f=$('photoIn').files[0];
+  if(f){try{it.photo=await loadFile(f)}catch(err){showErr(err.message)}}
+  state.items.push(it);state.shown=it.id;save();render();fire();
+  $('lie').value='';$('truth').value='';$('src').value='';$('photoIn').value='';$('lie').focus();
+});
+$('form').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();$('form').requestSubmit()}});
+document.addEventListener('keydown',e=>{
+  if(e.code==='Space'&&!e.target.closest('input,textarea,button,[role=button]')){e.preventDefault();setRun(!running)}
+  if(e.key==='Escape'&&document.body.classList.contains('broadcast'))bc(false);
+});
+function syncBtns(){
+  $('soundBtn').textContent='Som do alarme: '+(state.sound?'ligado':'desligado');$('soundBtn').setAttribute('aria-pressed',state.sound);
+  $('htBtn').textContent=state.ht?'Foto em meio-tom':'Foto original';$('htBtn').setAttribute('aria-pressed',state.ht);
+}
+$('soundBtn').onclick=()=>{state.sound=!state.sound;save();syncBtns()};
+$('htBtn').onclick=()=>{state.ht=!state.ht;save();syncBtns();drawPhoto()};
+$('nameIn').value=state.name;$('footIn').value=state.foot;
+$('nameIn').oninput=e=>{state.name=e.target.value||'Debate';save();render()};
+$('footIn').oninput=e=>{state.foot=e.target.value;save();render()};
+function bc(on){document.body.classList.toggle('broadcast',on);
+  if(on){try{document.documentElement.requestFullscreen?.().catch(()=>{})}catch(e){}}else if(document.fullscreenElement){document.exitFullscreen?.().catch(()=>{})}
+  setTimeout(drawPhoto,120)}
+$('bcBtn').onclick=()=>bc(true);$('exitBc').onclick=()=>bc(false);
+let rz;new ResizeObserver(()=>{clearTimeout(rz);rz=setTimeout(drawPhoto,80)}).observe($('photo'));
+
+/* sirene em meio-tom */
+const off=document.createElement('canvas'),oc=off.getContext('2d',{willReadFrequently:true});
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function drawShape(W,ph,alarm){
+  off.width=W;off.height=W;oc.fillStyle='#fff';oc.fillRect(0,0,W,W);
+  const cx=W*.5,base=W*.8;
+  oc.save();oc.translate(cx,W*.5);
+  (alarm?[-2.6,-2.2,-1.57,-.95,-.55]:[-2.4,-1.57,-.75]).forEach((a,i)=>{oc.save();oc.rotate(a);const L=W*(.4+.05*Math.sin(ph*6+i));oc.fillStyle='#000';oc.fillRect(W*.31,-W*.014,L-W*.31,W*.028);oc.restore()});
+  oc.restore();
+  const g=oc.createRadialGradient(cx-W*.1,W*.38,W*.02,cx,W*.52,W*.26);
+  g.addColorStop(0,'#eee');g.addColorStop(.55,'#777');g.addColorStop(1,'#111');
+  oc.fillStyle=g;oc.beginPath();oc.moveTo(cx-W*.19,base-W*.06);oc.lineTo(cx-W*.19,W*.5);oc.arc(cx,W*.5,W*.19,Math.PI,0);oc.lineTo(cx+W*.19,base-W*.06);oc.closePath();oc.fill();
+  const sx=cx+Math.sin(ph*4)*W*.14;
+  oc.save();oc.globalAlpha=.85;oc.fillStyle='#fff';oc.beginPath();oc.ellipse(sx,W*.52,W*.035,W*.15,0,0,7);oc.fill();oc.restore();
+  const g2=oc.createLinearGradient(0,base-W*.06,0,base+W*.08);g2.addColorStop(0,'#333');g2.addColorStop(1,'#000');
+  oc.fillStyle=g2;oc.fillRect(cx-W*.27,base-W*.06,W*.54,W*.12);
+}
+function halftone(cv,ph,alarm){
+  const r=cv.getBoundingClientRect(),dpr=Math.min(2,devicePixelRatio||1);
+  const W=Math.max(1,Math.round(r.width*dpr));if(cv.width!==W){cv.width=W;cv.height=W}
+  const c=cv.getContext('2d'),S=150;drawShape(S,ph,alarm);const d=oc.getImageData(0,0,S,S).data;
+  c.clearRect(0,0,W,W);
+  const step=W/S*2.4,k=S/W,dots=[];
+  for(let y=step/2;y<W;y+=step)for(let x=step/2;x<W;x+=step){const i=(Math.floor(y*k)*S+Math.floor(x*k))*4,lum=d[i]/255;if(lum<.97)dots.push([x,y,1-lum])}
+  c.fillStyle='#fbfbfc';dots.forEach(([x,y])=>{c.beginPath();c.arc(x,y,step*1.05,0,7);c.fill()});
+  c.fillStyle=alarm?'#e5372b':'#141416';dots.forEach(([x,y,v])=>{c.beginPath();c.arc(x,y,step*.55*Math.sqrt(v)+.3,0,7);c.fill()});
+}
+let last=0;
+function loop(t){
+  const alarm=performance.now()<alarmUntil;
+  if(!reduce||alarm||t-last>500){halftone($('siren'),t/1000*(alarm?3:.35),alarm&&Math.floor(t/140)%2===0);last=t}
+  requestAnimationFrame(loop);
+}
+
+syncBtns();render();
+if(state.elapsed>0)$('startBtn').textContent='Retomar';
+tick();requestAnimationFrame(loop);
+document.fonts&&document.fonts.ready.then(drawPhoto);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)save()});
+setInterval(()=>{if(running){state.elapsed=now();t0=performance.now();save()}},5000);
+})();
+</script>
+
+</body>
+</html>
