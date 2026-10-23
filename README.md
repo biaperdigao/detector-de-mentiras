@@ -23,6 +23,15 @@ Para atualizar depois, basta subir um `index.html` novo por cima do antigo.
 - **Modo transmissão** deixa só a peça na tela, para capturar no OBS ou gravar a tela. `Esc` sai.
 - O som do alarme só toca depois do primeiro clique na página (regra dos navegadores).
 
+## Contador para redes
+
+A aba **Contador para redes** gera a peça para publicar: "Fulano disse X mentiras em X minutos", a frase em destaque ("FULANO MENTE") e o par "ele disse que… / mas a verdade é que…", com a fonte.
+
+- **Puxar do ao vivo** conta as mentiras registradas da pessoa, usa o tempo do cronômetro e traz a mentira mais recente dela. Tudo pode ser editado à mão depois.
+- Em **Escolher do histórico** dá para trocar qual mentira aparece.
+- **Feed 4:5** e **Stories 9:16** trocam a prévia. A prévia é exatamente a imagem baixada.
+- **Baixar feed** (1080 × 1350) e **Baixar stories** (1080 × 1920) salvam PNGs prontos para postar.
+
 ## Onde ficam os dados
 
 Os registros e as fotos ficam salvos **só no navegador de quem está operando** (localStorage). Não vão para o GitHub nem para outra pessoa. Abrir em outro computador ou em janela anônima começa do zero. Apague os dois itens de exemplo antes de ir ao ar.

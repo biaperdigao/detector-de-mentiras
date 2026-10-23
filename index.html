@@ -89,7 +89,7 @@ button.alarm{background:var(--alarm);border-color:var(--alarm);color:var(--white
 button.alarm:hover{filter:brightness(.92)}
 button.ghost{border-color:transparent;background:transparent;padding:6px 8px;font-weight:500;color:var(--ink-2)}
 label{display:grid;gap:6px;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
-input,textarea{font:400 15px/1.4 var(--serif);border:1.5px solid var(--ink);background:var(--white);color:var(--ink);padding:9px 10px;width:100%;text-transform:none;letter-spacing:-.01em}
+input,textarea,select{font:400 15px/1.4 var(--serif);border:1.5px solid var(--ink);background:var(--white);color:var(--ink);padding:9px 10px;width:100%;text-transform:none;letter-spacing:-.01em}
 input[type=file]{font:500 13px var(--display);padding:7px}
 textarea{resize:vertical;min-height:58px}
 input[type=url]{font-family:var(--mono);font-size:13px}
@@ -110,11 +110,24 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--ink-2);padding
 .item-actions{display:grid;gap:2px}
 .ex{font-size:10px;font-weight:800;background:var(--lilac);padding:2px 5px;margin-left:6px;letter-spacing:.06em;color:var(--ink)}
 
+/* ---------- ABAS ---------- */
+.tabs{max-width:1080px;margin:0 auto 20px;display:flex;flex-wrap:wrap;gap:8px}
+.tabs button[aria-selected=true],[data-fmt][aria-pressed=true]{background:var(--ink);color:var(--white)}
+body.broadcast .tabs{display:none}
+
+/* ---------- CONTADOR PARA REDES ---------- */
+.stage{min-width:0}
+.stage canvas{display:block;width:auto;height:auto;max-width:100%;max-height:78vh;background:var(--paper);
+  box-shadow:0 1px 0 rgba(0,0,0,.06),0 18px 40px -24px rgba(0,0,0,.35)}
+
 /* ---------- GERADOR NA HORIZONTAL (telas largas) ---------- */
 @media (min-width:1100px){
   html,body{height:100%}
-  body{padding-block:20px;overflow:hidden}
-  .wrap{max-width:none;height:100%;grid-template-columns:min(560px,calc((100vh - 40px)*.8)) minmax(0,1fr);align-items:stretch}
+  body{padding-block:20px;overflow:hidden;display:flex;flex-direction:column}
+  .tabs{max-width:none;width:100%;margin:0 0 16px}
+  .wrap{max-width:none;width:100%;flex:1 1 0;min-height:0;grid-template-columns:min(560px,calc((100vh - 96px)*.8)) minmax(0,1fr);align-items:stretch}
+  .stage canvas{max-height:calc(100vh - 96px)}
+  .desk>.scroll{overflow:auto;align-content:start;min-height:0}
   .wrap>.poster{align-self:start}
   .desk{height:100%;min-height:0;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);align-items:stretch}
   .desk>.panel:first-child{grid-column:1/-1}
@@ -130,7 +143,11 @@ body.broadcast .exit{display:block}
 </style>
 </head>
 <body>
-<div class="wrap">
+<nav class="tabs" role="tablist" aria-label="Seções">
+  <button type="button" role="tab" id="tabLive" aria-controls="liveView" aria-selected="true">Ao vivo</button>
+  <button type="button" role="tab" id="tabCounter" aria-controls="cview" aria-selected="false">Contador para redes</button>
+</nav>
+<div class="wrap" id="liveView" role="tabpanel">
   <section class="poster" id="poster" aria-label="Peça de checagem ao vivo">
     <div class="p-in">
       <div class="rule"><span class="live"><i class="dot"></i><span id="liveTxt">Pausado</span></span><span id="showName"></span></div>
@@ -182,6 +199,46 @@ body.broadcast .exit{display:block}
       <div class="hint">Clique em um item para exibi-lo na peça. Apague os exemplos antes de ir ao ar.</div>
       <div class="log" id="log"></div>
       <input type="file" id="swapIn" accept="image/*" hidden>
+    </div>
+  </div>
+</div>
+
+<div class="wrap" id="cview" role="tabpanel" hidden>
+  <div class="stage"><canvas id="ccv" width="1080" height="1350" role="img" aria-label="Prévia do contador"></canvas></div>
+
+  <div class="desk">
+    <div class="panel">
+      <h2>Exportar <span>PNG com 1080 px de largura</span></h2>
+      <div class="btns">
+        <button type="button" data-fmt="feed" aria-pressed="true">Feed 4:5</button>
+        <button type="button" data-fmt="stories" aria-pressed="false">Stories 9:16</button>
+        <span style="flex:1"></span>
+        <button class="primary" id="dlFeed" type="button">Baixar feed</button>
+        <button class="primary" id="dlStories" type="button">Baixar stories</button>
+      </div>
+      <div class="hint">A prévia é exatamente a imagem que vai ser baixada. O feed sai em 1080 × 1350 e o stories em 1080 × 1920, com folga em cima e embaixo para a barra do Instagram.</div>
+    </div>
+
+    <div class="panel scroll">
+      <h2>Contador <span><button class="ghost" id="cPull" type="button">Puxar do ao vivo</button></span></h2>
+      <div class="two">
+        <label>Quem<input id="cName" placeholder="Flávio" maxlength="30"></label>
+        <label>Pronome<select id="cPron"><option value="ele">Ele</option><option value="ela">Ela</option></select></label>
+      </div>
+      <div class="two">
+        <label>Mentiras<input id="cN" type="number" min="0" inputmode="numeric"></label>
+        <label>Minutos<input id="cMin" type="number" min="0" inputmode="numeric"></label>
+      </div>
+      <label>Frase em destaque<input id="cShout" maxlength="40"></label>
+      <div class="hint">Puxar do ao vivo conta as mentiras registradas dessa pessoa, usa o tempo do cronômetro e traz a mentira mais recente dela.</div>
+    </div>
+
+    <div class="panel scroll">
+      <h2>Mentira em destaque</h2>
+      <label>Escolher do histórico<select id="cPick"></select></label>
+      <label><span id="cLieLbl">Ele disse que</span><textarea id="cLie"></textarea></label>
+      <label>Mas a verdade é que<textarea id="cTruth"></textarea></label>
+      <label>Fonte (link)<input id="cSrc" type="url" placeholder="https://"></label>
     </div>
   </div>
 </div>
@@ -336,7 +393,7 @@ $('form').addEventListener('submit',async e=>{
 });
 $('form').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();$('form').requestSubmit()}});
 document.addEventListener('keydown',e=>{
-  if(e.code==='Space'&&!e.target.closest('input,textarea,button,[role=button]')){e.preventDefault();setRun(!running)}
+  if(e.code==='Space'&&state.tab!=='counter'&&!e.target.closest('input,textarea,select,button,[role=button]')){e.preventDefault();setRun(!running)}
   if(e.key==='Escape'&&document.body.classList.contains('broadcast'))bc(false);
 });
 function syncBtns(){
@@ -374,21 +431,163 @@ function drawShape(W,ph,alarm){
 function halftone(cv,ph,alarm){
   const r=cv.getBoundingClientRect(),dpr=Math.min(2,devicePixelRatio||1);
   const W=Math.max(1,Math.round(r.width*dpr));if(cv.width!==W){cv.width=W;cv.height=W}
-  const c=cv.getContext('2d'),S=150;drawShape(S,ph,alarm);const d=oc.getImageData(0,0,S,S).data;
-  c.clearRect(0,0,W,W);
+  const c=cv.getContext('2d');c.clearRect(0,0,W,W);sirenAt(c,0,0,W,ph,alarm);
+}
+function sirenAt(c,x0,y0,W,ph,alarm){
+  const S=150;drawShape(S,ph,alarm);const d=oc.getImageData(0,0,S,S).data;
   const step=W/S*2.4,k=S/W,dots=[];
-  for(let y=step/2;y<W;y+=step)for(let x=step/2;x<W;x+=step){const i=(Math.floor(y*k)*S+Math.floor(x*k))*4,lum=d[i]/255;if(lum<.97)dots.push([x,y,1-lum])}
+  for(let y=step/2;y<W;y+=step)for(let x=step/2;x<W;x+=step){const i=(Math.floor(y*k)*S+Math.floor(x*k))*4,lum=d[i]/255;if(lum<.97)dots.push([x0+x,y0+y,1-lum])}
   c.fillStyle='#fbfbfc';dots.forEach(([x,y])=>{c.beginPath();c.arc(x,y,step*1.05,0,7);c.fill()});
   c.fillStyle=alarm?'#e5372b':'#141416';dots.forEach(([x,y,v])=>{c.beginPath();c.arc(x,y,step*.55*Math.sqrt(v)+.3,0,7);c.fill()});
 }
 let last=0;
 function loop(t){
   const alarm=performance.now()<alarmUntil;
-  if(!reduce||alarm||t-last>500){halftone($('siren'),t/1000*(alarm?3:.35),alarm&&Math.floor(t/140)%2===0);last=t}
+  if(state.tab!=='counter'&&(!reduce||alarm||t-last>500)){halftone($('siren'),t/1000*(alarm?3:.35),alarm&&Math.floor(t/140)%2===0);last=t}
   requestAnimationFrame(loop);
 }
 
-syncBtns();render();
+/* ---------- CONTADOR PARA REDES (desenhado em canvas: a prévia é o próprio PNG) ---------- */
+const INK='#141416',INK2='#55555c',PAPER='#ececed',LILAC='#9d9de6',ALARM='#e5372b',TRUTH='#1d8a4b',WHITE='#fbfbfc';
+const FAM={cond:'Anton,Impact,sans-serif',ital:'"Instrument Serif",Georgia,serif',serif:'"Libre Caslon Condensed",Georgia,serif',disp:'Archivo,Arial,sans-serif',mono:'"IBM Plex Mono",monospace'};
+const COND=`400 # ${FAM.cond}`,ITAL=`italic 400 # ${FAM.ital}`,SERIF=`400 # ${FAM.serif}`;
+const norm=s=>String(s||'').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+const up=s=>String(s||'').toLocaleUpperCase('pt-BR');
+const slug=s=>norm(s).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'contador';
+const fontsReady=document.fonts?Promise.all(['400 100px Anton','italic 400 100px "Instrument Serif"','400 100px "Libre Caslon Condensed"','700 100px Archivo','800 100px Archivo','500 100px "IBM Plex Mono"']
+  .map(f=>document.fonts.load(f,'ÁÉÍÓÚÂÊÔÃÕÇáéíóúâêôãõç Hxd0123456789'))).catch(()=>{}):Promise.resolve();
+
+function setF(c,tpl,size,ls=0){c.font=tpl.replace('#',size.toFixed(1)+'px');if('letterSpacing' in c)c.letterSpacing=(ls*size).toFixed(2)+'px'}
+function fitS(c,tpl,text,maxW,maxS,ls=0){setF(c,tpl,100,ls);return Math.min(maxS,100*maxW/Math.max(1,c.measureText(text).width))}
+const capH=c=>c.measureText('H').actualBoundingBoxAscent;
+function wrapLines(c,text,maxW){
+  const out=[];String(text).split(/\n+/).forEach(par=>{let line='';
+    par.split(/\s+/).filter(Boolean).forEach(w=>{const t=line?line+' '+w:w;if(line&&c.measureText(t).width>maxW){out.push(line);line=w}else line=t});
+    if(line)out.push(line)});
+  return out;
+}
+function cData(){
+  const k=state.counter,NAME=up((k.name||'').trim()||'Fulano'),n=Math.max(0,parseInt(k.n)||0),min=Math.max(0,parseInt(k.min)||0);
+  return{NAME,n,min,shout:up((k.shout||'').trim()||NAME+' mente'),pron:k.pron==='ela'?'ELA':'ELE',
+    lie:(k.lie||'').trim(),truth:(k.truth||'').trim(),src:(k.src||'').trim()};
+}
+/* topo: régua, "X disse", "N mentiras", "em N minutos." e a faixa lilás com a frase em destaque */
+function cHead(c,d,st,k,draw){
+  const W=1080,px=st?84:96,R=W-px,mw=R-px,put=(t,x,y,col)=>{if(draw){c.fillStyle=col;c.fillText(t,x,y)}};
+  let y=st?190:64,s;
+  if(draw){
+    c.fillStyle=INK;c.fillRect(px,y,mw,2);c.fillRect(px,y+54,mw,2);
+    setF(c,`700 # ${FAM.disp}`,st?27:25,.04);const by=y+27+capH(c)/2;
+    c.fillStyle=ALARM;c.beginPath();c.arc(px+9,y+27,9,0,7);c.fill();
+    put('DETECTOR DE MENTIRAS',px+30,by,INK);c.textAlign='right';put(up(state.name),R,by,INK);c.textAlign='left';
+  }
+  y+=54+(st?64:42)*k;
+  const l1=`${d.NAME} DISSE`;s=fitS(c,COND,l1,mw,(st?104:88)*k,.01);setF(c,COND,s,.01);
+  y+=capH(c);put(l1,px,y,INK);y+=s*.22;
+  const num=String(d.n),l2=num+' '+(d.n===1?'MENTIRA':'MENTIRAS');
+  s=fitS(c,COND,l2,mw,340*k,-.005);setF(c,COND,s,-.005);
+  y+=capH(c);put(num,px,y,ALARM);put(l2.slice(num.length),px+c.measureText(num).width,y,INK);y+=s*.15;
+  const lineAbove=y,sz=(st?290:250)*Math.max(k,.8),l3=`em ${d.min} ${d.min===1?'minuto':'minutos'}.`;
+  s=fitS(c,ITAL,l3,mw-sz*.8,(st?170:140)*k,-.02);setF(c,ITAL,s,-.02);
+  y+=c.measureText('d').actualBoundingBoxAscent;put(l3,px,y,INK);y+=s*.3+(st?44:26)*k;
+  s=fitS(c,COND,d.shout,mw,(st?280:240)*k,0);setF(c,COND,s,0);
+  const ch=capH(c),pad=s*.24,bandH=ch+pad*2,top=y;
+  if(draw){c.fillStyle=LILAC;c.fillRect(0,top,W,bandH)}
+  put(d.shout,px,top+pad+ch,INK);
+  /* sem lugar ao lado do número: a sirene pousa na borda da faixa, sem encostar na linha de cima */
+  /* sirene pousada na borda da faixa: cabe entre a linha de cima e o texto da faixa (o desenho ocupa de 5% a 86% da caixa) */
+  const ssz=Math.min(sz,(top+pad*.8-lineAbove)/.81),sy=Math.min(top-ssz*.86+16,top+pad*.8-ssz*.86);
+  return{y:top+bandH,siren:[R-ssz*.86-(sz-ssz)*.3,sy,ssz]};
+}
+/* bloco de baixo: "ele disse que" (riscado) e "mas a verdade é que" */
+function cBlocks(d){return[d.lie&&{tag:`${d.pron} DISSE QUE`,bg:ALARM,text:d.lie,strike:true},d.truth&&{tag:'MAS A VERDADE É QUE',bg:TRUTH,text:d.truth}].filter(Boolean)}
+function cChecks(c,blocks,ps,mw,st,draw,px,y,bottom){
+  const tS=st?30:24,tH=tS*1.5,gT=st?20:14,gB=st?44:30,lh=ps*1.16;let h=0;
+  blocks.forEach((b,i)=>{
+    if(draw){setF(c,`800 # ${FAM.disp}`,tS,.06);const w=c.measureText(b.tag).width+tS*1.1;
+      c.fillStyle=b.bg;c.fillRect(px,y+h,w,tH);c.fillStyle=WHITE;c.fillText(b.tag,px+tS*.55,y+h+tH/2+capH(c)/2)}
+    h+=tH+gT;setF(c,SERIF,ps,-.015);
+    const a=capH(c),xh=c.measureText('x').actualBoundingBoxAscent;
+    wrapLines(c,b.text,mw).forEach(line=>{
+      if(draw&&y+h+lh<=bottom+ps*.25){const bl=y+h+a+ps*.14;c.fillStyle=INK;c.fillText(line,px,bl);
+        if(b.strike){c.fillStyle=ALARM;c.fillRect(px,bl-xh*.5-ps*.035,c.measureText(line).width,ps*.07)}}
+      h+=lh});
+    if(i<blocks.length-1)h+=gB;
+  });
+  return h;
+}
+function drawCounter(cv,key){
+  const st=key==='stories',W=1080,H=st?1920:1350,d=cData(),px=st?84:96,R=W-px,mw=R-px,footY=H-(st?200:62);
+  cv.width=W;cv.height=H;const c=cv.getContext('2d');c.textBaseline='alphabetic';c.textAlign='left';
+  const blocks=cBlocks(d),src=safeUrl(d.src)?'FONTE: '+shortUrl(d.src):(d.src?'FONTE: '+d.src:''),gap=st?64:40;
+  /* rodapé: texto a 16px da linha; fonte (link) logo acima; o bloco de texto para antes dela */
+  const fb=footY-(st?20:16),srcB=fb-(st?50:40),bottom=(src?srcB-(st?20:17):fb-(st?22:19))-(st?52:40);
+  const minPs=st?40:32,maxPs=st?72:54;
+  let k=1,h;
+  for(;;k-=.05){h=cHead(c,d,st,k,false);if(k<.62||cChecks(c,blocks,minPs,mw,st,false)<=bottom-h.y-gap)break}
+  c.fillStyle=PAPER;c.fillRect(0,0,W,H);
+  c.fillStyle='rgba(0,0,0,.0125)';for(let y=23.8;y<H;y+=25.4)c.fillRect(0,y,W,1.6);
+  h=cHead(c,d,st,k,true);
+  let y=h.y+gap,ps=maxPs;while(ps>22&&cChecks(c,blocks,ps,mw,st,false)>bottom-y)ps--;
+  if(st)y+=Math.max(0,bottom-y-cChecks(c,blocks,ps,mw,st,false))*.4; /* sobra do stories: respiro acima do bloco */
+  cChecks(c,blocks,ps,mw,st,true,px,y,bottom);
+  if(src){setF(c,`500 # ${FAM.mono}`,st?26:22);c.fillStyle=INK2;c.fillText(src,px,srcB)}
+  c.fillStyle=INK;c.fillRect(px,footY,mw,2);
+  setF(c,`700 # ${FAM.disp}`,st?28:24,.05);c.fillText(up(state.foot),px,fb);
+  const sc=st?1.25:1.05;c.save();c.translate(R-88*sc,fb-capH(c)/2-20*sc);c.scale(sc,sc);
+  c.strokeStyle=INK;c.lineWidth=2.4;c.lineJoin='round';c.stroke(new Path2D('M4 15h50V5l30 15-30 15V25H4z'));c.restore();
+  sirenAt(c,...h.siren,.35,true);
+}
+
+let cRaf=0;
+function drawPreview(){if(state.tab!=='counter')return;cancelAnimationFrame(cRaf);cRaf=requestAnimationFrame(()=>drawCounter($('ccv'),state.counter.fmt))}
+async function exportPng(key){
+  await fontsReady;const cv=document.createElement('canvas');drawCounter(cv,key);
+  cv.toBlob(b=>{if(!b)return;const a=document.createElement('a');a.href=URL.createObjectURL(b);
+    a.download=`${slug(cData().NAME)}-mente-${key}.png`;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),4000)},'image/png');
+}
+function pullLive(){
+  const k=state.counter,name=(k.name||'').trim()||(current()?.who||'').trim(),key=norm(name);
+  const mine=key?state.items.filter(i=>norm(i.who)===key):[],list=mine.length?mine:state.items;
+  const last=[...list].sort((a,b)=>b.t-a.t)[0],maxT=Math.max(now(),...state.items.map(i=>i.t||0));
+  Object.assign(k,{name,n:list.length,min:Math.max(1,Math.ceil(maxT/60)),pick:last?.id??'',lie:last?.lie||'',truth:last?.truth||'',src:last?.src||''});
+  save();syncCounter();drawPreview();
+}
+function syncLabels(){
+  const k=state.counter;$('cLieLbl').textContent=(k.pron==='ela'?'Ela':'Ele')+' disse que';
+  $('cShout').placeholder=up(((k.name||'').trim()||'Flávio')+' mente');
+  document.querySelectorAll('[data-fmt]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.fmt===k.fmt));
+}
+function syncCounter(){
+  const k=state.counter;
+  [['cName','name'],['cN','n'],['cMin','min'],['cShout','shout'],['cLie','lie'],['cTruth','truth'],['cSrc','src']].forEach(([id,f])=>{if(document.activeElement!==$(id))$(id).value=k[f]??''});
+  $('cPron').value=k.pron;
+  $('cPick').innerHTML='<option value="">Escrever à mão</option>'+[...state.items].sort((a,b)=>b.t-a.t)
+    .map(i=>`<option value="${i.id}">${esc(fmt(i.t).slice(0,5))} · ${esc(i.who||'Sem identificação')} · ${esc(i.lie.slice(0,48))}</option>`).join('');
+  $('cPick').value=state.items.some(i=>i.id===k.pick)?k.pick:'';
+  syncLabels();
+}
+if(!state.counter){state.counter={name:'',pron:'ele',n:0,min:0,shout:'',lie:'',truth:'',src:'',fmt:'feed'};pullLive()}
+[['cName','name'],['cN','n'],['cMin','min'],['cShout','shout'],['cLie','lie'],['cTruth','truth'],['cSrc','src']].forEach(([id,f])=>
+  $(id).addEventListener('input',e=>{state.counter[f]=e.target.value;if(f==='lie'||f==='truth'||f==='src'){state.counter.pick='';$('cPick').value=''}save();syncLabels();drawPreview()}));
+$('cPron').onchange=e=>{state.counter.pron=e.target.value;save();syncLabels();drawPreview()};
+$('cPick').onchange=e=>{const it=state.items.find(i=>i.id===+e.target.value);state.counter.pick=it?it.id:'';
+  if(it)Object.assign(state.counter,{lie:it.lie,truth:it.truth,src:it.src||''});save();syncCounter();drawPreview()};
+$('cPull').onclick=pullLive;
+document.querySelectorAll('[data-fmt]').forEach(b=>b.onclick=()=>{state.counter.fmt=b.dataset.fmt;save();syncLabels();drawPreview()});
+$('dlFeed').onclick=()=>exportPng('feed');$('dlStories').onclick=()=>exportPng('stories');
+
+function setTab(t){
+  state.tab=t;save();const on=t==='counter';
+  $('liveView').hidden=on;$('cview').hidden=!on;
+  $('tabLive').setAttribute('aria-selected',!on);$('tabCounter').setAttribute('aria-selected',on);
+  if(on){syncCounter();drawPreview()}else setTimeout(drawPhoto,50);
+}
+$('tabLive').onclick=()=>setTab('live');$('tabCounter').onclick=()=>setTab('counter');
+fontsReady.then(drawPreview);
+
+syncBtns();render();setTab(state.tab==='counter'?'counter':'live');
 if(state.elapsed>0)$('startBtn').textContent='Retomar';
 tick();requestAnimationFrame(loop);
 document.fonts&&document.fonts.ready.then(drawPhoto);
