@@ -219,9 +219,9 @@ body.broadcast .exit{display:block}
 <div class="wrap" id="cview" role="tabpanel" hidden>
   <div class="stage">
     <div class="trio">
-      <figure><figcaption>Ao vivo · 1080 × 1350</figcaption><canvas id="pLive" width="1080" height="1350" role="img" aria-label="Prévia da peça ao vivo"></canvas></figure>
+      <figure><figcaption id="capL">Ao vivo · feed 4:5</figcaption><canvas id="pLive" width="1080" height="1350" role="img" aria-label="Prévia da peça ao vivo"></canvas></figure>
       <figure><figcaption id="capC">Contador · feed 4:5</figcaption><canvas id="ccv" width="1080" height="1350" role="img" aria-label="Prévia do contador"></canvas></figure>
-      <figure><figcaption>Amarela · 1080 × 1350</figcaption><canvas id="pYel" width="1080" height="1350" role="img" aria-label="Prévia da peça amarela"></canvas></figure>
+      <figure><figcaption id="capY">Amarela · feed 4:5</figcaption><canvas id="pYel" width="1080" height="1350" role="img" aria-label="Prévia da peça amarela"></canvas></figure>
     </div>
   </div>
 
@@ -229,13 +229,13 @@ body.broadcast .exit{display:block}
     <div class="panel">
       <h2>Exportar <span>um painel só, três PNGs separados</span></h2>
       <div class="btns">
-        <span class="hint">Contador em</span>
+        <span class="hint">Formato das 3 peças</span>
         <button type="button" data-fmt="feed" aria-pressed="true">Feed 4:5</button>
         <button type="button" data-fmt="stories" aria-pressed="false">Stories 9:16</button>
         <span style="flex:1"></span>
         <button class="primary" id="dlAll" type="button">Exportar as 3 peças</button>
       </div>
-      <div class="hint">As prévias são exatamente as imagens baixadas: Ao vivo e Amarela em 1080 × 1350, Contador em feed (1080 × 1350) ou stories (1080 × 1920). Se o navegador perguntar, permita baixar vários arquivos.</div>
+      <div class="hint">As prévias são exatamente as imagens baixadas. As três peças saem no formato escolhido: feed (1080 × 1350) ou stories (1080 × 1920). Se o navegador perguntar, permita baixar vários arquivos.</div>
     </div>
 
     <div class="panel scroll">
@@ -598,13 +598,14 @@ function halftoneImg(c,img,x,y,w,h,ht){
   }
   c.restore();
 }
-function drawLive(cv,d,img){
-  const W=1080,H=1350,u=W/100,px=10*u,R=W-px,mw=R-px,lw=3;
+function drawLive(cv,d,img,fmt){
+  /* stories: mesma peça, com folga para a barra do Instagram; a foto cresce e ocupa a altura extra */
+  const st=fmt==='stories',W=1080,H=st?1920:1350,u=W/100,px=10*u,R=W-px,mw=R-px,lw=3;
   cv.width=W;cv.height=H;const c=cv.getContext('2d');c.textBaseline='alphabetic';c.textAlign='left';
   c.fillStyle=PAPER;c.fillRect(0,0,W,H);
   c.fillStyle='rgba(0,0,0,.0125)';for(let y=2.2*u;y<H;y+=2.35*u)c.fillRect(0,y,W,.15*u);
   /* régua */
-  let y=6.5*u;const rH=2.6*u+2.3*u*1.25;
+  let y=st?190:6.5*u;const rH=2.6*u+2.3*u*1.25;
   c.fillStyle=INK;c.fillRect(px,y,mw,lw);c.fillRect(px,y+lw+rH,mw,lw);
   setF(c,`700 # ${FAM.disp}`,2.3*u,.04);const rb=y+lw+rH/2+capH(c)/2;
   c.fillStyle=ALARM;c.beginPath();c.arc(px+.85*u,y+lw+rH/2,.85*u,0,7);c.fill();
@@ -622,7 +623,7 @@ function drawLive(cv,d,img){
   const rowH=r=>Math.max(tagH,r.lines.length*r.lh);
   const checkH=3*u+metaH+rows.reduce((h,r)=>h+rg+rowH(r),0);
   const ledeH=5.4*u*.88+13.5*u*.88+10.5*u*.85,footH=2.2*u*1.2+1.2*u+lw;
-  const footTop=H-6*u-footH,photoBot=Math.max(photoTop+20*u,footTop-3*u-checkH-ledeH-5.5*u);
+  const footTop=H-(st?200:6*u)-footH,photoBot=Math.max(photoTop+20*u,footTop-3*u-checkH-ledeH-5.5*u);
   /* foto no bloco lilás */
   c.fillStyle=LILAC;c.fillRect(0,photoTop,80*u,photoBot-photoTop);
   if(img)halftoneImg(c,img,0,photoTop,80*u,photoBot-photoTop,state.ht);
@@ -668,8 +669,9 @@ function grain(){
   g.putImageData(im,0,0);return grainCv;
 }
 function yF(c,w,fam,size,ls=0,stretch='normal'){c.font=`${w} ${size.toFixed(1)}px ${fam}`;if('fontStretch' in c)c.fontStretch=stretch;if('letterSpacing' in c)c.letterSpacing=(ls*size).toFixed(2)+'px'}
-function drawYellow(cv,d,img){
-  const W=1080,H=1350,pl=68,pt=64,pb=54,mw=W-pl*2;
+function drawYellow(cv,d,img,fmt){
+  /* stories: folga em cima e embaixo; o texto de baixo pode crescer até ocupar a altura extra */
+  const st=fmt==='stories',W=1080,H=st?1920:1350,pl=68,pt=st?190:64,pb=st?200:54,mw=W-pl*2;
   cv.width=W;cv.height=H;const c=cv.getContext('2d');c.textBaseline='alphabetic';c.textAlign='left';
   c.fillStyle=YEL;c.fillRect(0,0,W,H);
   const A=(s,ls=0)=>yF(c,400,FAM.cond,s,ls);
@@ -710,7 +712,7 @@ function drawYellow(cv,d,img){
   const photoBot=fyTop+side*1.04;
   let top=Math.max(b2+36,photoBot+10-tagH-tagGap);const bottom=ruleY-30;
   const measure=s=>blocks.reduce((h,b,i)=>{yF(c,b.w,FAM.disp,s*b.k,-.003,'extra-condensed');return h+tagH+tagGap+wrapLines(c,b.text,mw).length*s*b.k*1.02+(i?bGap:0)},0);
-  let s=60;while(s>22&&measure(s)>bottom-top)s-=1;
+  let s=st?84:60;while(s>22&&measure(s)>bottom-top)s-=1;
   let yy=top+Math.max(0,(bottom-top-measure(s))/2);
   blocks.forEach((b,i)=>{
     if(i)yy+=bGap;
@@ -738,13 +740,13 @@ const curPhoto=()=>{
 let cRaf=0,pv=0;
 async function drawPreview(){
   if(state.tab!=='counter')return;const my=++pv;const img=await curPhoto();if(my!==pv)return;
-  cancelAnimationFrame(cRaf);cRaf=requestAnimationFrame(()=>{const d=cData();drawLive($('pLive'),d,img);drawCounter($('ccv'),state.counter.fmt);drawYellow($('pYel'),d,img)});
+  cancelAnimationFrame(cRaf);cRaf=requestAnimationFrame(()=>{const d=cData();const f=state.counter.fmt;drawLive($('pLive'),d,img,f);drawCounter($('ccv'),f);drawYellow($('pYel'),d,img,f)});
 }
 const saveCanvas=(cv,name)=>new Promise(res=>cv.toBlob(b=>{if(b){const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;
   document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}res()},'image/png'));
 async function exportAll(){
   await fontsReady;const d=cData(),img=await curPhoto(),s=slug(d.NAME),fmt=state.counter.fmt;
-  const jobs=[[cv=>drawLive(cv,d,img),`${s}-ao-vivo.png`],[cv=>drawCounter(cv,fmt),`${s}-mente-${fmt}.png`],[cv=>drawYellow(cv,d,img),`${s}-amarela.png`]];
+  const jobs=[[cv=>drawLive(cv,d,img,fmt),`${s}-ao-vivo-${fmt}.png`],[cv=>drawCounter(cv,fmt),`${s}-mente-${fmt}.png`],[cv=>drawYellow(cv,d,img,fmt),`${s}-amarela-${fmt}.png`]];
   for(const [fn,name] of jobs){const cv=document.createElement('canvas');fn(cv);await saveCanvas(cv,name);await new Promise(r=>setTimeout(r,500))}
 }
 /* banco de fotos: escolher, sortear, adicionar (em P&B) */
@@ -781,7 +783,8 @@ function syncLabels(){
   const k=state.counter;$('cLieLbl').textContent=(k.pron==='ela'?'Ela':'Ele')+' disse que';
   $('cShout').placeholder=up(((k.name||'').trim()||'Flávio')+' mente');
   document.querySelectorAll('[data-fmt]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.fmt===k.fmt));
-  $('capC').textContent=k.fmt==='stories'?'Contador · stories 9:16':'Contador · feed 4:5';
+  const fl=k.fmt==='stories'?'stories 9:16':'feed 4:5';
+  $('capL').textContent='Ao vivo · '+fl;$('capC').textContent='Contador · '+fl;$('capY').textContent='Amarela · '+fl;
 }
 function syncCounter(){
   const k=state.counter;

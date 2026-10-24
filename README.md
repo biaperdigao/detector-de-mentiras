@@ -27,9 +27,11 @@ Para atualizar depois, basta subir um `index.html` novo por cima do antigo.
 
 A aba **Peças para redes** tem **um painel só** que alimenta as três peças de publicar, com prévia lado a lado:
 
-1. **Ao vivo**: o mesmo desenho da peça ao vivo (foto em meio-tom no bloco lilás, sirene, "até agora, N mentiras foram ditas"), em 1080 × 1350.
-2. **Contador**: "Fulano disse X mentiras em X minutos", a faixa "FULANO MENTE" e o par "ele disse que… / mas a verdade é que…". Sai em feed (1080 × 1350) ou stories (1080 × 1920).
-3. **Amarela**: "FULANO DISSE X MENTIRAS EM X MINUTOS", "FULANO / MENTE" gigante com a foto quadrada sobre o E, e o par ele disse / verdade com a fonte no rodapé. 1080 × 1350.
+1. **Ao vivo**: o mesmo desenho da peça ao vivo (foto em meio-tom no bloco lilás, sirene, "até agora, N mentiras foram ditas").
+2. **Contador**: "Fulano disse X mentiras em X minutos", a faixa "FULANO MENTE" e o par "ele disse que… / mas a verdade é que…".
+3. **Amarela**: "FULANO DISSE X MENTIRAS EM X MINUTOS", "FULANO / MENTE" gigante com a foto quadrada sobre o E, e o par ele disse / verdade com a fonte no rodapé.
+
+As três saem em **feed** (1080 × 1350) ou **stories** (1080 × 1920), escolhido em **Formato das 3 peças**. No stories sobra uma folga em cima e embaixo para a barra do Instagram: na peça Ao vivo a foto cresce, e na Amarela o texto de baixo fica maior.
 
 - **Exportar as 3 peças** baixa três PNGs separados de uma vez (se o navegador perguntar, permita baixar vários arquivos).
 - **Puxar do ao vivo** conta as mentiras registradas da pessoa, usa o tempo do cronômetro e traz a mentira mais recente dela. Tudo pode ser editado à mão depois.
