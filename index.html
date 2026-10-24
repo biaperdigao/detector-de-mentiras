@@ -132,6 +132,15 @@ body.broadcast .tabs{display:none}
 .bank button[aria-pressed=true]{border-color:var(--ink);outline:3px solid var(--lilac);outline-offset:1px}
 
 /* ---------- CHECAGEM AO VIVO (fontes externas) ---------- */
+/* atualizações: abinhas acima das prévias */
+.ups{display:flex;gap:6px;overflow-x:auto;padding:2px 2px 8px;margin-bottom:6px}
+.ups button{flex:0 0 auto;padding:8px 10px;font-size:12px;display:inline-flex;align-items:center;gap:6px}
+.ups button[aria-selected=true]{background:var(--ink);color:var(--white)}
+.udot{width:7px;height:7px;border-radius:50%;background:var(--alarm)}
+.ub{font-size:10px;font-weight:800;letter-spacing:.04em;padding:2px 5px;background:var(--lilac);color:var(--ink)}
+.ub.editada{background:#f2d36b}.ub.enviada{background:var(--truth);color:var(--white)}
+details>summary{cursor:pointer;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+details[open]{display:grid;gap:10px}
 #feedP{grid-column:1/-1}
 #feedOpts{display:grid;gap:10px}
 .chk{display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-weight:500;font-size:13px}
@@ -233,6 +242,7 @@ body.broadcast .exit{display:block}
 
 <div class="wrap" id="cview" role="tabpanel" hidden>
   <div class="stage">
+    <div class="ups" id="ups" role="tablist" aria-label="Atualizações"></div>
     <div class="trio">
       <figure><figcaption id="capL">Ao vivo · feed 4:5</figcaption><canvas id="pLive" width="1080" height="1350" role="img" aria-label="Prévia da peça ao vivo"></canvas></figure>
       <figure><figcaption id="capC">Contador · feed 4:5</figcaption><canvas id="ccv" width="1080" height="1350" role="img" aria-label="Prévia do contador"></canvas></figure>
@@ -248,9 +258,20 @@ body.broadcast .exit{display:block}
         <button type="button" data-fmt="feed" aria-pressed="true">Feed 4:5</button>
         <button type="button" data-fmt="stories" aria-pressed="false">Stories 9:16</button>
         <span style="flex:1"></span>
-        <button class="primary" id="dlAll" type="button">Exportar as 3 peças</button>
+        <button id="dlAll" type="button">Baixar as 3 peças</button>
+        <button class="alarm" id="sendDrive" type="button">Aprovar e enviar ao Drive</button>
       </div>
-      <div class="hint">As prévias são exatamente as imagens baixadas. As três peças saem no formato escolhido: feed (1080 × 1350) ou stories (1080 × 1920). Se o navegador perguntar, permita baixar vários arquivos.</div>
+      <div class="hint" id="upInfo"></div>
+      <div class="hint" id="driveMsg" hidden></div>
+      <div class="btns"><button class="ghost" id="upDel" type="button" hidden>Apagar esta atualização</button></div>
+      <details id="driveCfg"><summary>Configurar Google Drive</summary>
+        <div class="two">
+          <label>Link do script<input id="driveUrl" type="url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></label>
+          <label>Senha do script<input id="driveToken" type="password" autocomplete="off"></label>
+        </div>
+        <div class="hint">O envio sobe as três peças em feed e stories (6 PNGs) para a pasta do debate, numa subpasta por atualização. O passo a passo está no README, na seção Google Drive. O link e a senha ficam salvos só neste navegador.</div>
+      </details>
+      <div class="hint">As prévias são exatamente as imagens geradas. "Baixar" salva no computador as três peças no formato escolhido.</div>
     </div>
 
     <div class="panel" id="feedP">
@@ -539,8 +560,11 @@ function wrapLines(c,text,maxW){
     if(line)out.push(line)});
   return out;
 }
-function cData(){
-  const k=state.counter,NAME=up((k.name||'').trim()||'Fulano'),n=Math.max(0,parseInt(k.n)||0),min=Math.max(0,parseInt(k.min)||0);
+/* peça em edição: o rascunho ao vivo (state.counter) ou a atualização escolhida, que a fonte nunca mexe */
+const selUp=()=>state.upSel&&(state.ups||[]).find(u=>u.id===state.upSel)||null;
+const K=()=>{const u=selUp();return u?u.data:state.counter};
+function cData(k=K()){
+  const NAME=up((k.name||'').trim()||'Fulano'),n=Math.max(0,parseInt(k.n)||0),min=Math.max(0,parseInt(k.min)||0);
   return{NAME,n,min,shout:up((k.shout||'').trim()||NAME+' mente'),pron:k.pron==='ela'?'ELA':'ELE',
     lie:(k.lie||'').trim(),truth:(k.truth||'').trim(),src:(k.src||'').trim()};
 }
@@ -589,8 +613,8 @@ function cChecks(c,blocks,ps,mw,st,draw,px,y,bottom){
   });
   return h;
 }
-function drawCounter(cv,key){
-  const st=key==='stories',W=1080,H=st?1920:1350,d=cData(),px=st?84:96,R=W-px,mw=R-px,footY=H-(st?200:62);
+function drawCounter(cv,key,d=cData()){
+  const st=key==='stories',W=1080,H=st?1920:1350,px=st?84:96,R=W-px,mw=R-px,footY=H-(st?200:62);
   cv.width=W;cv.height=H;const c=cv.getContext('2d');c.textBaseline='alphabetic';c.textAlign='left';
   const blocks=cBlocks(d),src=safeUrl(d.src)?'FONTE: '+shortUrl(d.src):(d.src?'FONTE: '+d.src:''),gap=st?64:40;
   /* rodapé: texto a 16px da linha; fonte (link) logo acima; o bloco de texto para antes dela */
@@ -765,23 +789,27 @@ function drawYellow(cv,d,img,fmt){
 /* ---------- prévias e exportação das três peças ---------- */
 let pick=-1;
 function pickRandom(){const n=allBank().length;if(!n){pick=-1;return}let i;do i=Math.floor(Math.random()*n);while(n>1&&i===pick);pick=i}
-const curPhoto=()=>{
+/* cada atualização guarda o número da sua foto (ph); o rascunho usa a sorteada na sessão */
+const phOf=k=>k&&Number.isInteger(k.ph)?k.ph:pick;
+function randPh(prev){const n=allBank().length;if(!n)return -1;let i;do i=Math.floor(Math.random()*n);while(n>1&&i===prev);return i}
+const curPhoto=(kk=K())=>{
   /* banco só vale para a pessoa do banco; outra pessoa usa a foto dela registrada no ao vivo */
-  const b=allBank(),w=bankNorm(state.bankWho),k=bankNorm(cData().NAME);
-  if(b.length&&w&&(k===w||k.split(/\s+/).includes(w)))return getImg(b[Math.min(Math.max(pick,0),b.length-1)]);
+  const b=allBank(),w=bankNorm(state.bankWho),k=bankNorm(cData(kk).NAME);
+  if(b.length&&w&&(k===w||k.split(/\s+/).includes(w)))return getImg(b[Math.min(Math.max(phOf(kk),0),b.length-1)]);
   const it=state.items.filter(i=>i.photo&&bankNorm(i.who)===k).sort((a,b)=>b.t-a.t)[0];
   return it?getImg(it.photo):Promise.resolve(null);
 };
 let cRaf=0,pv=0;
 async function drawPreview(){
   if(state.tab!=='counter')return;const my=++pv;const img=await curPhoto();if(my!==pv)return;
-  cancelAnimationFrame(cRaf);cRaf=requestAnimationFrame(()=>{const d=cData();const f=state.counter.fmt;drawLive($('pLive'),d,img,f);drawCounter($('ccv'),f);drawYellow($('pYel'),d,img,f)});
+  cancelAnimationFrame(cRaf);cRaf=requestAnimationFrame(()=>{const d=cData();const f=state.counter.fmt;drawLive($('pLive'),d,img,f);drawCounter($('ccv'),f,d);drawYellow($('pYel'),d,img,f)});
 }
 const saveCanvas=(cv,name)=>new Promise(res=>cv.toBlob(b=>{if(b){const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;
   document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}res()},'image/png'));
 async function exportAll(){
-  await fontsReady;const d=cData(),img=await curPhoto(),s=slug(d.NAME),fmt=state.counter.fmt;
-  const jobs=[[cv=>drawLive(cv,d,img,fmt),`${s}-ao-vivo-${fmt}.png`],[cv=>drawCounter(cv,fmt),`${s}-mente-${fmt}.png`],[cv=>drawYellow(cv,d,img,fmt),`${s}-amarela-${fmt}.png`]];
+  await fontsReady;const u=selUp(),d=cData(),img=await curPhoto(),fmt=state.counter.fmt;
+  const s=slug(d.NAME)+(u?'-atualizacao-'+String(u.num).padStart(2,'0'):'');
+  const jobs=[[cv=>drawLive(cv,d,img,fmt),`${s}-ao-vivo-${fmt}.png`],[cv=>drawCounter(cv,fmt,d),`${s}-mente-${fmt}.png`],[cv=>drawYellow(cv,d,img,fmt),`${s}-amarela-${fmt}.png`]];
   for(const [fn,name] of jobs){const cv=document.createElement('canvas');fn(cv);await saveCanvas(cv,name);await new Promise(r=>setTimeout(r,500))}
 }
 /* banco de fotos: escolher, sortear, adicionar (em P&B) */
@@ -792,37 +820,38 @@ function grayFile(file){return loadFile(file).then(getImg).then(img=>{
   x.filter='grayscale(1) contrast(1.1)';x.drawImage(img,0,0,cv.width,cv.height);return cv.toDataURL('image/jpeg',.85)})}
 function renderBank(){
   const b=allBank();$('bankCount').textContent=b.length?b.length+' fotos':'';
-  $('bank').innerHTML=b.map((src,i)=>`<button type="button" data-b="${i}" aria-pressed="${i===pick}" aria-label="Foto ${i+1}" style="background-image:url('${src}')"></button>`).join('');
-  $('bankDel').hidden=!(pick>=BANK.length);
+  $('bank').innerHTML=b.map((src,i)=>`<button type="button" data-b="${i}" aria-pressed="${i===phOf(K())}" aria-label="Foto ${i+1}" style="background-image:url('${src}')"></button>`).join('');
+  $('bankDel').hidden=!(phOf(K())>=BANK.length);
 }
-$('bank').addEventListener('click',e=>{const t=e.target.closest('[data-b]');if(!t)return;pick=+t.dataset.b;renderBank();drawPreview()});
-$('bankShuffle').onclick=()=>{pickRandom();renderBank();drawPreview()};
+const setPh=i=>{const u=selUp();if(u){u.data.ph=i;touchUp()}else pick=i;save();renderBank();drawPreview()};
+$('bank').addEventListener('click',e=>{const t=e.target.closest('[data-b]');if(t)setPh(+t.dataset.b)});
+$('bankShuffle').onclick=()=>setPh(randPh(phOf(K())));
 $('bankAddBtn').onclick=()=>{$('bankAdd').value='';$('bankAdd').click()};
 $('bankAdd').onchange=async e=>{
   const files=[...e.target.files];if(!files.length)return;
   for(const f of files){try{(state.bank=state.bank||[]).push(await grayFile(f))}catch(err){}}
-  save();pick=allBank().length-1;renderBank();drawPreview();render();
+  save();setPh(allBank().length-1);render();
 };
-$('bankDel').onclick=()=>{if(pick<BANK.length)return;state.bank.splice(pick-BANK.length,1);save();pickRandom();renderBank();drawPreview();render()};
+$('bankDel').onclick=()=>{const i=phOf(K());if(i<BANK.length)return;state.bank.splice(i-BANK.length,1);save();setPh(randPh(-1));render()};
 $('bankWho').value=state.bankWho||'';
 $('bankWho').oninput=e=>{state.bankWho=e.target.value;save();render();drawPreview()};
 pickRandom();renderBank();
 function pullLive(){
-  const k=state.counter,name=(k.name||'').trim()||(current()?.who||'').trim(),key=norm(name);
+  const k=K(),name=(k.name||'').trim()||(current()?.who||'').trim(),key=norm(name);
   const mine=key?state.items.filter(i=>norm(i.who)===key):[],list=mine.length?mine:state.items;
   const last=[...list].sort((a,b)=>b.t-a.t)[0],maxT=Math.max(now(),...state.items.map(i=>i.t||0));
   Object.assign(k,{name,n:list.length,min:Math.max(1,Math.ceil(maxT/60)),pick:last?.id??'',lie:last?.lie||'',truth:last?.truth||'',src:last?.src||''});
-  save();syncCounter();drawPreview();
+  touchUp();save();syncCounter();drawPreview();
 }
 function syncLabels(){
-  const k=state.counter;$('cLieLbl').textContent=(k.pron==='ela'?'Ela':'Ele')+' disse que';
+  const k=K();$('cLieLbl').textContent=(k.pron==='ela'?'Ela':'Ele')+' disse que';
   $('cShout').placeholder=up(((k.name||'').trim()||'Flávio')+' mente');
-  document.querySelectorAll('[data-fmt]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.fmt===k.fmt));
-  const fl=k.fmt==='stories'?'stories 9:16':'feed 4:5';
+  document.querySelectorAll('[data-fmt]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.fmt===state.counter.fmt));
+  const fl=state.counter.fmt==='stories'?'stories 9:16':'feed 4:5';
   $('capL').textContent='Ao vivo · '+fl;$('capC').textContent='Contador · '+fl;$('capY').textContent='Amarela · '+fl;
 }
 function syncCounter(){
-  const k=state.counter;
+  const k=K();
   [['cName','name'],['cN','n'],['cMin','min'],['cShout','shout'],['cLie','lie'],['cTruth','truth'],['cSrc','src']].forEach(([id,f])=>{if(document.activeElement!==$(id))$(id).value=k[f]??''});
   $('cPron').value=k.pron;
   $('cPick').innerHTML='<option value="">Escrever à mão</option>'+[...state.items].sort((a,b)=>b.t-a.t)
@@ -832,10 +861,10 @@ function syncCounter(){
 }
 if(!state.counter){state.counter={name:'',pron:'ele',n:0,min:0,shout:'',lie:'',truth:'',src:'',fmt:'feed'};pullLive()}
 [['cName','name'],['cN','n'],['cMin','min'],['cShout','shout'],['cLie','lie'],['cTruth','truth'],['cSrc','src']].forEach(([id,f])=>
-  $(id).addEventListener('input',e=>{state.counter[f]=e.target.value;if(f==='lie'||f==='truth'||f==='src'){state.counter.pick='';$('cPick').value=''}save();syncLabels();drawPreview()}));
-$('cPron').onchange=e=>{state.counter.pron=e.target.value;save();syncLabels();drawPreview()};
-$('cPick').onchange=e=>{const it=state.items.find(i=>i.id===+e.target.value);state.counter.pick=it?it.id:'';
-  if(it)Object.assign(state.counter,{lie:it.lie,truth:it.truth,src:it.src||''});save();syncCounter();drawPreview()};
+  $(id).addEventListener('input',e=>{const k=K();k[f]=e.target.value;if(f==='lie'||f==='truth'||f==='src'){k.pick='';$('cPick').value=''}touchUp();save();syncLabels();drawPreview()}));
+$('cPron').onchange=e=>{K().pron=e.target.value;touchUp();save();syncLabels();drawPreview()};
+$('cPick').onchange=e=>{const it=state.items.find(i=>i.id===+e.target.value),k=K();k.pick=it?it.id:'';
+  if(it)Object.assign(k,{lie:it.lie,truth:it.truth,src:it.src||''});touchUp();save();syncCounter();drawPreview()};
 $('cPull').onclick=pullLive;
 document.querySelectorAll('[data-fmt]').forEach(b=>b.onclick=()=>{state.counter.fmt=b.dataset.fmt;save();syncLabels();drawPreview()});
 $('dlAll').onclick=exportAll;
@@ -885,10 +914,10 @@ function spkList(){
 }
 const spkClaims=()=>feed&&state.feedSpk?feed.claims.filter(c=>sameWho(c.who,state.feedSpk)&&counted(c)).sort((a,b)=>b.at-a.at):[];
 function feedMinutes(){if(!feed||!feed.start)return null;return Math.max(1,Math.round((Math.min(Date.now(),feed.end||Infinity)-feed.start)/6e4))}
-function useClaim(c){Object.assign(state.counter,{lie:c.text,truth:c.truth,src:c.src,pick:''});state.feedUsed=c.id}
+function useClaim(c,k=state.counter){Object.assign(k,{lie:c.text,truth:c.truth,src:c.src,pick:''});if(k===state.counter)state.feedUsed=c.id}
 /* com a fonte ligada, número e minutos vêm dela; a mentira em destaque troca sozinha quando chega uma nova */
 function applyFeed(manual){
-  if(!feed||!state.feedSpk)return;const k=state.counter,list=spkClaims(),before=[k.n,k.min,state.feedUsed].join('|');
+  if(!feed||!state.feedSpk)return;const k=state.counter,list=spkClaims();upsFromFeed(list);const before=[k.n,k.min,state.feedUsed].join('|');
   k.n=list.length;const m=feedMinutes();if(m)k.min=m;
   if(list[0]&&state.feedAuto!==false&&(manual||list[0].id!==state.feedUsed))useClaim(list[0]);
   if(manual||before!==[k.n,k.min,state.feedUsed].join('|')){save();syncCounter();drawPreview()}
@@ -923,13 +952,90 @@ $('feedSpk').onchange=e=>{
   if(state.feedSpk)state.counter.name=state.feedSpk.trim().split(/\s+/)[0];
   state.feedUsed='';save();applyFeed(true);syncCounter();drawPreview();renderFeed();
 };
-$('feedPartial').onchange=e=>{state.feedPartial=e.target.checked;save();applyFeed(false);renderFeed()};
+$('feedPartial').onchange=e=>{state.feedPartial=e.target.checked;forgetSeen();save();applyFeed(false);renderFeed()};
 $('feedAuto').onchange=e=>{state.feedAuto=e.target.checked;save();if(e.target.checked)applyFeed(true);renderFeed()};
 $('feedList').addEventListener('click',e=>{
   const b=e.target.closest('[data-fid]'),c=b&&feed&&feed.claims.find(x=>x.id===b.dataset.fid);if(!c)return;
-  state.feedAuto=false;useClaim(c);save();syncCounter();drawPreview();renderFeed();
+  const u=selUp();if(u){useClaim(c,u.data);touchUp()}else{state.feedAuto=false;useClaim(c)}save();syncCounter();drawPreview();renderFeed();
 });
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&state.feedSrc)feedTick()});
+
+/* ---------- ATUALIZAÇÕES: cópias congeladas das peças (Atualização 1, 2, 3…); a fonte nunca mexe nelas ---------- */
+state.ups=Array.isArray(state.ups)?state.ups:[];
+if(state.upSel&&!selUp())state.upSel=null;
+const FIELDS=['name','pron','n','min','shout','lie','truth','src'];
+const hm=t=>new Date(t).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+function snapDraft(){const d={};FIELDS.forEach(f=>d[f]=state.counter[f]);d.ph=pick;return d}
+function newUp(data,from,claimId){
+  const num=state.ups.reduce((m,u)=>Math.max(m,u.num),0)+1;
+  const u={id:'u'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),num,at:Date.now(),from,claimId:claimId||'',status:'nova',data};
+  state.ups.push(u);save();renderUps();return u;
+}
+function touchUp(){const u=selUp();if(u&&u.status!=='editada'){u.status='editada';renderUps()}}
+/* primeira leitura de uma fonte+candidato: o que já existe não vira atualização; daí em diante, cada mentira nova vira uma */
+const seenKey=()=>state.feedSrc+'|'+norm(state.feedSpk);
+function forgetSeen(){if(state.upSeen)delete state.upSeen[seenKey()]}
+function upsFromFeed(list){
+  state.upSeen=state.upSeen||{};const key=seenKey(),seen=state.upSeen[key];
+  if(!seen){state.upSeen[key]=list.map(c=>c.id);return}
+  const fresh=list.filter(c=>!seen.includes(c.id)).sort((a,b)=>a.at-b.at);
+  fresh.forEach(c=>{
+    seen.push(c.id);const d=snapDraft(),m=feed.start&&c.at?Math.round((c.at-feed.start)/6e4):0;
+    Object.assign(d,{n:list.filter(x=>x.at<=c.at).length,min:m>0?m:(feedMinutes()||d.min),lie:c.text,truth:c.truth,src:c.src,ph:randPh(d.ph)});
+    newUp(d,'feed',c.id);
+  });
+  if(fresh.length){save();$('ups').scrollLeft=$('ups').scrollWidth}
+}
+function selectUp(id){state.upSel=id||null;save();syncCounter();renderBank();renderUps();drawPreview()}
+function renderUps(){
+  const sel=state.upSel||'',ST={nova:'nova',editada:'✎ editada',enviada:'✓ enviada'};
+  $('ups').innerHTML=`<button type="button" role="tab" data-up="" aria-selected="${!sel}"><i class="udot"></i>Ao vivo</button>`
+    +state.ups.map(u=>`<button type="button" role="tab" data-up="${esc(u.id)}" aria-selected="${u.id===sel}">Atualização ${u.num}<span class="ub ${esc(u.status)}">${ST[u.status]||''}</span></button>`).join('')
+    +'<button type="button" class="ghost" data-newup>+ Nova</button>';
+  const u=selUp();
+  $('upInfo').textContent=u?`Atualização ${u.num} · criada às ${hm(u.at)} ${u.from==='feed'?'pela checagem ao vivo':'à mão'}${u.sentAt?` · enviada às ${hm(u.sentAt)}`:''}. A fonte não mexe mais nela: edite à vontade.`
+    :'Ao vivo: rascunho que acompanha a checagem. Cada mentira nova vira uma atualização; + Nova congela o que está na tela.';
+  $('upDel').hidden=!u;$('sendDrive').textContent=u&&u.status==='enviada'?'Reenviar ao Drive':'Aprovar e enviar ao Drive';
+}
+$('ups').addEventListener('click',e=>{
+  if(e.target.closest('[data-newup]')){selectUp(newUp(snapDraft(),'manual').id);$('ups').scrollLeft=$('ups').scrollWidth;return}
+  const b=e.target.closest('[data-up]');if(b)selectUp(b.dataset.up);
+});
+$('upDel').onclick=()=>{const u=selUp();if(!u||!confirm(`Apagar a Atualização ${u.num}? Os arquivos que já foram para o Drive continuam lá.`))return;
+  state.ups=state.ups.filter(x=>x!==u);selectUp(null)};
+
+/* ---------- GOOGLE DRIVE: o Apps Script (drive-upload.gs) recebe cada PNG e salva na pasta compartilhada ---------- */
+$('driveUrl').value=state.driveUrl||'';$('driveToken').value=state.driveToken||'';
+$('driveUrl').oninput=e=>{state.driveUrl=e.target.value.trim();save()};
+$('driveToken').oninput=e=>{state.driveToken=e.target.value;save()};
+function driveMsg(t,link){
+  const m=$('driveMsg');m.hidden=!t;m.textContent=t||'';
+  if(link&&safeUrl(link)){const a=document.createElement('a');a.href=link;a.target='_blank';a.rel='noopener';a.textContent=' Abrir a pasta';m.append(a)}
+}
+const toB64=cv=>new Promise((ok,no)=>cv.toBlob(b=>{if(!b)return no(Error('não deu para gerar a imagem'));
+  const r=new FileReader();r.onload=()=>ok(String(r.result).split(',')[1]);r.onerror=()=>no(r.error);r.readAsDataURL(b)},'image/png'));
+async function sendDrive(){
+  const url=(state.driveUrl||'').trim();
+  if(!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(url)){$('driveCfg').open=true;driveMsg('Cole o link do script do Google (termina em /exec) e a senha em Configurar Google Drive.');return}
+  let u=selUp();if(!u){u=newUp(snapDraft(),'manual');selectUp(u.id)}
+  const btn=$('sendDrive');btn.disabled=true;driveMsg('');
+  try{
+    await fontsReady;const d=cData(u.data),img=await curPhoto(u.data),nn=String(u.num).padStart(2,'0'),s=`${slug(d.NAME)}-atualizacao-${nn}`,jobs=[];
+    for(const f of['feed','stories'])jobs.push([cv=>drawLive(cv,d,img,f),`${s}-ao-vivo-${f}.png`],[cv=>drawCounter(cv,f,d),`${s}-mente-${f}.png`],[cv=>drawYellow(cv,d,img,f),`${s}-amarela-${f}.png`]);
+    let i=0,folder='';
+    for(const[fn,nome]of jobs){
+      btn.textContent=`Enviando ${++i} de ${jobs.length}…`;const cv=document.createElement('canvas');fn(cv);
+      const r=await fetch(url,{method:'POST',headers:{'content-type':'text/plain;charset=utf-8'},
+        body:JSON.stringify({token:state.driveToken||'',pasta:state.name||'Debate',subpasta:`Atualização ${nn}`,nome,base64:await toB64(cv)})});
+      const j=await r.json().catch(()=>({ok:false,erro:'o script não respondeu como esperado'}));
+      if(!j.ok)throw Error(j.erro||'falha no envio');folder=j.pasta||folder;
+    }
+    Object.assign(u,{status:'enviada',sentAt:Date.now(),folder:safeUrl(folder)});save();
+    driveMsg(`Atualização ${u.num} enviada às ${hm(u.sentAt)}: ${jobs.length} arquivos.`,folder);
+  }catch(e){driveMsg(`Não deu para enviar a Atualização ${u.num}: ${e.message}. Confira o link e a senha do script.`)}
+  btn.disabled=false;renderUps();
+}
+$('sendDrive').onclick=sendDrive;
 
 function setTab(t){
   state.tab=t;save();const on=t==='counter';
@@ -941,7 +1047,7 @@ $('tabLive').onclick=()=>setTab('live');$('tabCounter').onclick=()=>setTab('coun
 fontsReady.then(drawPreview);
 
 syncBtns();render();setTab(state.tab==='counter'?'counter':'live');
-renderFeed();if(state.feedSrc)feedTick();
+renderFeed();renderUps();if(state.feedSrc)feedTick();
 if(state.elapsed>0)$('startBtn').textContent='Retomar';
 tick();requestAnimationFrame(loop);
 document.fonts&&document.fonts.ready.then(drawPhoto);

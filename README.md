@@ -47,6 +47,30 @@ No painel **Checagem ao vivo**, escolha a **Fonte** e o **Candidato**. A página
 - **Usar sempre a checagem mais recente** troca a mentira em destaque quando chega uma nova. Clicar numa checagem da lista fixa aquela e desliga a troca automática.
 - O checagemaovivo.org não libera leitura por outros sites, por isso ainda não está na lista.
 
+### Atualizações (1, 2, 3…)
+
+Acima das prévias ficam as abinhas **Ao vivo · Atualização 1 · Atualização 2 · … · + Nova**.
+
+- **Ao vivo** é o rascunho que acompanha a fonte de checagem.
+- Cada mentira nova que chega da fonte vira uma **Atualização N**: uma cópia congelada com o número de mentiras, os minutos, a fala, a verdade, a fonte e uma foto sorteada. As mentiras que já existiam quando a fonte foi ligada não viram atualização.
+- A fonte **nunca mexe** numa atualização. Dá para editar a Atualização 2 com calma enquanto a 3 e a 4 chegam.
+- **+ Nova** congela à mão o que está na tela.
+- Cada abinha mostra o estado: **nova**, **✎ editada** (mudou desde que foi criada ou enviada) ou **✓ enviada**.
+- **Baixar as 3 peças** salva no computador. **Aprovar e enviar ao Drive** sobe as três peças em feed e stories (6 PNGs). Enviar a partir de Ao vivo cria uma atualização antes.
+
+### Google Drive
+
+O envio usa um Google Apps Script que salva os arquivos na pasta compartilhada. Quem opera a página não precisa fazer login. A configuração é feita uma vez só:
+
+1. No Drive compartilhado, crie a pasta das peças e copie o ID dela: é o trecho do endereço depois de `/folders/`.
+2. Abra [script.google.com](https://script.google.com), crie um **Novo projeto** e cole o conteúdo de [`drive-upload.gs`](drive-upload.gs).
+3. No topo do script, preencha `PASTA_ID` e troque `SENHA` por uma senha só de vocês.
+4. **Implantar → Nova implantação → App da Web**. Executar como: **Eu**. Quem pode acessar: **Qualquer pessoa**.
+5. Autorize o acesso ao Drive e copie o link que termina em `/exec`. Abrir esse link no navegador mostra "script do Drive funcionando".
+6. Na página, em **Peças para redes → Configurar Google Drive**, cole o link e a senha.
+
+No Drive, os arquivos ficam em `Pasta das peças / <nome do debate> / Atualização 01 / flavio-atualizacao-01-amarela-feed.png` e assim por diante. Reenviar uma atualização troca os arquivos de mesmo nome, e os antigos vão para a lixeira. O link e a senha ficam salvos só no navegador de quem configurou.
+
 ### Banco de fotos
 
 - As 12 fotos do Flávio já vêm embutidas no `index.html`, em preto e branco.
