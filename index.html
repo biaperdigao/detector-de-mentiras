@@ -876,7 +876,7 @@ $('dlAll').onclick=exportAll;
 const getJ=url=>fetch(url,{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('HTTP '+r.status);return r.json()});
 const firstSent=t=>{t=String(t||'').replace(/\s+/g,' ').trim();const p=t.match(/[^.!?]+(?:[.!?]+["”’)]*|$)/g)||[t];
   let o=p[0].trim();if(o.length<80&&p[1])o+=' '+p[1].trim();return o.length>320?o.slice(0,318).replace(/\s+\S*$/,'')+'…':o};
-const artigo=a=>/lupa|ag[eê]ncia/i.test(a)?'a':'o';
+const artigo=a=>/lupa|ag[eê]ncia|checagem/i.test(a)?'a':'o';
 const FONTES={
   rodape:{nome:'Rodapé',async ler(prev){
     /* protocolo do Rodapé: versao.json é minúsculo; feed.json só quando a versão muda */
