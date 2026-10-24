@@ -131,6 +131,19 @@ body.broadcast .tabs{display:none}
 .bank button:hover{background-color:#c9c9ce;filter:brightness(.9)}
 .bank button[aria-pressed=true]{border-color:var(--ink);outline:3px solid var(--lilac);outline-offset:1px}
 
+/* ---------- CHECAGEM AO VIVO (fontes externas) ---------- */
+#feedP{grid-column:1/-1}
+#feedOpts{display:grid;gap:10px}
+.chk{display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-weight:500;font-size:13px}
+.chk input{width:auto;margin:0}
+#feedList{max-height:220px;overflow:auto}
+.fitem{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:baseline;width:100%;padding:10px 4px;border:0;border-top:1px solid #c9c9ce;background:none;text-align:left;font:400 14px/1.35 var(--serif);letter-spacing:-.01em;cursor:pointer}
+.fitem:first-child{border-top:0}
+.fitem.on{background:linear-gradient(90deg,rgba(157,157,230,.25),transparent)}
+.vtag{font:800 10px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;padding:4px 6px;color:var(--white);background:var(--ink-2);white-space:nowrap}
+.vtag.falso{background:var(--alarm)}
+.fag{display:block;font:700 10px/1.4 var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}
+
 /* ---------- GERADOR NA HORIZONTAL (telas largas) ---------- */
 @media (min-width:1100px){
   html,body{height:100%}
@@ -146,6 +159,8 @@ body.broadcast .tabs{display:none}
   .log{max-height:none;overflow:visible}
   #cview{grid-template-columns:minmax(0,1fr) minmax(460px,560px)}
   #cview .stage{overflow:auto;min-height:0;height:100%}
+  #cview .desk{grid-template-rows:auto auto minmax(0,1fr)}
+  #feedList{max-height:160px}
 }
 body.broadcast .desk{display:none}
 body.broadcast .wrap{grid-template-columns:minmax(0,min(560px,calc((100vh - 60px)*.8)));justify-content:center}
@@ -236,6 +251,26 @@ body.broadcast .exit{display:block}
         <button class="primary" id="dlAll" type="button">Exportar as 3 peças</button>
       </div>
       <div class="hint">As prévias são exatamente as imagens baixadas. As três peças saem no formato escolhido: feed (1080 × 1350) ou stories (1080 × 1920). Se o navegador perguntar, permita baixar vários arquivos.</div>
+    </div>
+
+    <div class="panel" id="feedP">
+      <h2>Checagem ao vivo <span id="feedStatus">desligada</span></h2>
+      <div class="two">
+        <label>Fonte<select id="feedSrc">
+          <option value="">Desligada (preencher à mão)</option>
+          <option value="rodape">Rodapé · Lupa, Aos Fatos, Fato ou Fake, Estadão</option>
+          <option value="var">VAR Debate</option>
+        </select></label>
+        <label>Candidato<select id="feedSpk"></select></label>
+      </div>
+      <div id="feedOpts" hidden>
+        <div class="btns">
+          <label class="chk"><input type="checkbox" id="feedPartial"> Contar imprecisas como mentira</label>
+          <label class="chk"><input type="checkbox" id="feedAuto"> Usar sempre a checagem mais recente</label>
+        </div>
+        <div class="log" id="feedList"></div>
+        <div class="hint" id="feedNote"></div>
+      </div>
     </div>
 
     <div class="panel scroll">
@@ -805,6 +840,97 @@ $('cPull').onclick=pullLive;
 document.querySelectorAll('[data-fmt]').forEach(b=>b.onclick=()=>{state.counter.fmt=b.dataset.fmt;save();syncLabels();drawPreview()});
 $('dlAll').onclick=exportAll;
 
+/* ---------- CHECAGEM AO VIVO: Rodapé e VAR Debate liberam leitura direta (CORS aberto) ---------- */
+/* cada fonte vira a mesma lista: {id, who, text, truth, src, agency, label, group: falso|impreciso|verdadeiro|outro, at (ms)} */
+const getJ=url=>fetch(url,{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('HTTP '+r.status);return r.json()});
+const firstSent=t=>{t=String(t||'').replace(/\s+/g,' ').trim();const p=t.match(/[^.!?]+(?:[.!?]+["”’)]*|$)/g)||[t];
+  let o=p[0].trim();if(o.length<80&&p[1])o+=' '+p[1].trim();return o.length>320?o.slice(0,318).replace(/\s+\S*$/,'')+'…':o};
+const artigo=a=>/lupa|ag[eê]ncia/i.test(a)?'a':'o';
+const FONTES={
+  rodape:{nome:'Rodapé',async ler(prev){
+    /* protocolo do Rodapé: versao.json é minúsculo; feed.json só quando a versão muda */
+    const B='https://aovivo.rodape.org/',v=await getJ(B+'versao.json'),ver=`${v.execucao}:${v.versao}`;
+    if(prev&&prev.ver===ver)return prev;
+    const [f,ev]=await Promise.all([getJ(B+'feed.json'),prev?Promise.resolve(prev.ev):getJ(B+'evento.json').catch(()=>({}))]);
+    const G=['verdadeiro','impreciso','falso'],q=Date.parse(ev.quando);
+    const claims=(Array.isArray(f.checagens)?f.checagens:[]).filter(c=>c&&typeof c.chave==='string'&&typeof c.frase==='string'&&c.frase.trim()).map(c=>{
+      const ag=String(c.agencia||'agência de checagem'),selo=String(c.selo||'checado');
+      return{id:c.chave,who:String(c.quem||''),text:c.frase.trim(),truth:`${artigo(ag)} ${ag} classificou a frase como “${selo.toLowerCase()}”.`,
+        src:safeUrl(String(c.link||'')),agency:ag,label:selo,group:G.includes(c.grupo)?c.grupo:'impreciso',at:(Number(c.visto_em)||0)*1000}});
+    const st=f.status&&typeof f.status==='object'?f.status:{};
+    return{ver,ev,claims,start:Number.isFinite(q)?q:null,end:Number.isFinite(q)&&Number(ev.duracao_h)?q+Number(ev.duracao_h)*36e5:null,speakers:[],
+      note:Object.entries(st).filter(([k])=>k!=='Coletor').map(([k,v])=>`${k}: ${v}`).join(' · ')}}},
+  var:{nome:'VAR Debate',async ler(){
+    const d=await getJ('https://vardebate.com.br/data/snapshot.json'),st=d.status||{},t0=Number(st.started_at)||0;
+    const FAM={verdadeiro:'verdadeiro',verdadeiro_mas:'impreciso',exagerado:'impreciso',subestimado:'impreciso',impreciso:'impreciso',falso:'falso',insustentavel:'impreciso',nao_verificavel:'outro'};
+    const NOME=(d.scoreboard&&d.scoreboard.labels)||{};
+    const claims=(Array.isArray(d.items)?d.items:[]).filter(i=>i&&!i.retracted&&!i.rechecking&&(i.quote||i.claim)).map(i=>{
+      const q=String(i.quote||'').trim(),cl=String(i.claim||'').trim();
+      return{id:String(i.id),who:String(i.speaker||''),text:q&&q.length<=220?q:(cl||q),
+        truth:String(i.summary||i.correct_value||'').trim()||firstSent(i.explanation),
+        src:(Array.isArray(i.sources)?i.sources:[]).map(x=>safeUrl(String(x&&x.url||''))).find(Boolean)||'',
+        agency:'VAR Debate',label:String(NOME[i.label]||i.label||''),group:FAM[i.label]||'outro',
+        at:(t0&&i.t!=null?t0+Number(i.t):Number(i.published_at)||0)*1000}});
+    return{claims,start:t0?t0*1000:null,end:st.live===false&&Number(d.updated_at)?Number(d.updated_at)*1000:null,
+      speakers:Array.isArray(st.speakers)?st.speakers.map(String):[],note:st.live?'Debate ao vivo no VAR.':'O VAR ainda não está ao vivo.'}}}
+};
+let feed=null,feedErr='',feedTimer=0,feedGen=0;
+const sameWho=(a,b)=>{a=norm(a);b=norm(b);if(!a||!b)return false;if(a===b)return true;
+  const A=a.split(/\s+/),Bw=b.split(/\s+/);return A.includes(Bw[0])||Bw.includes(A[0])};
+const counted=c=>c.group==='falso'||(!!state.feedPartial&&c.group==='impreciso');
+function spkList(){
+  if(!feed)return[];const m=new Map();
+  [...feed.speakers,...feed.claims.map(c=>c.who)].forEach(n=>{if(n&&![...m.values()].some(x=>sameWho(x,n)))m.set(norm(n),n)});
+  return[...m.entries()];
+}
+const spkClaims=()=>feed&&state.feedSpk?feed.claims.filter(c=>sameWho(c.who,state.feedSpk)&&counted(c)).sort((a,b)=>b.at-a.at):[];
+function feedMinutes(){if(!feed||!feed.start)return null;return Math.max(1,Math.round((Math.min(Date.now(),feed.end||Infinity)-feed.start)/6e4))}
+function useClaim(c){Object.assign(state.counter,{lie:c.text,truth:c.truth,src:c.src,pick:''});state.feedUsed=c.id}
+/* com a fonte ligada, número e minutos vêm dela; a mentira em destaque troca sozinha quando chega uma nova */
+function applyFeed(manual){
+  if(!feed||!state.feedSpk)return;const k=state.counter,list=spkClaims(),before=[k.n,k.min,state.feedUsed].join('|');
+  k.n=list.length;const m=feedMinutes();if(m)k.min=m;
+  if(list[0]&&state.feedAuto!==false&&(manual||list[0].id!==state.feedUsed))useClaim(list[0]);
+  if(manual||before!==[k.n,k.min,state.feedUsed].join('|')){save();syncCounter();drawPreview()}
+}
+function renderFeed(){
+  const src=FONTES[state.feedSrc]?state.feedSrc:'';$('feedSrc').value=src;$('feedOpts').hidden=!src;$('feedSpk').disabled=!src;
+  const ls=spkList();
+  if(state.feedSpk&&!ls.some(([,n])=>sameWho(n,state.feedSpk)))ls.push([state.feedSpk,state.feedSpkName||state.feedSpk]);
+  $('feedSpk').innerHTML='<option value="">Escolha quem</option>'+ls.map(([k,n])=>`<option value="${esc(k)}">${esc(n)}</option>`).join('');
+  $('feedSpk').value=(ls.find(([,n])=>sameWho(n,state.feedSpk))||[''])[0];
+  $('feedPartial').checked=!!state.feedPartial;$('feedAuto').checked=state.feedAuto!==false;
+  if(!src){$('feedStatus').textContent='desligada';return}
+  if(!feed){$('feedStatus').textContent=feedErr||'conectando…';$('feedList').innerHTML='';$('feedNote').textContent='';return}
+  const n=feed.claims.length,hh=new Date(feed.at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  $('feedStatus').textContent=feedErr||`${FONTES[src].nome} · ${n} ${n===1?'checagem':'checagens'} · atualizado às ${hh}`;
+  $('feedNote').textContent=(feed.note?feed.note.replace(/\.?\s*$/,'. '):'')+'Com a fonte ligada, o número de mentiras e os minutos vêm dela. Clique numa checagem para usá-la na peça.';
+  const list=spkClaims();
+  $('feedList').innerHTML=!state.feedSpk?'<div class="hint">Escolha o candidato para contar as mentiras.</div>'
+    :list.length?list.map(c=>`<button type="button" class="fitem${c.id===state.feedUsed?' on':''}" data-fid="${esc(c.id)}"><span class="vtag${c.group==='falso'?' falso':''}">${esc(c.label||c.group)}</span><span><span class="fag">${esc(c.agency)}</span>${esc(c.text)}</span></button>`).join('')
+    :`<div class="hint">Nenhuma checagem ${state.feedPartial?'falsa ou imprecisa':'falsa'} dessa pessoa ainda.</div>`;
+}
+async function feedTick(){
+  clearTimeout(feedTimer);const src=state.feedSrc,F=FONTES[src];if(!F){feed=null;renderFeed();return}
+  const gen=feedGen;
+  try{const d=await F.ler(feed&&feed.src===src?feed:null);if(gen!==feedGen)return;d.src=src;d.at=Date.now();feed=d;feedErr='';applyFeed(false)}
+  catch(e){if(gen!==feedGen)return;feedErr='sem resposta da fonte, tentando de novo'}
+  renderFeed();feedTimer=setTimeout(feedTick,document.hidden?6e4:1e4);
+}
+$('feedSrc').onchange=e=>{state.feedSrc=e.target.value;feed=null;feedErr='';feedGen++;save();renderFeed();feedTick()};
+$('feedSpk').onchange=e=>{
+  const o=e.target.selectedOptions[0];state.feedSpk=e.target.value?o.textContent:'';state.feedSpkName=state.feedSpk;
+  if(state.feedSpk)state.counter.name=state.feedSpk.trim().split(/\s+/)[0];
+  state.feedUsed='';save();applyFeed(true);syncCounter();drawPreview();renderFeed();
+};
+$('feedPartial').onchange=e=>{state.feedPartial=e.target.checked;save();applyFeed(false);renderFeed()};
+$('feedAuto').onchange=e=>{state.feedAuto=e.target.checked;save();if(e.target.checked)applyFeed(true);renderFeed()};
+$('feedList').addEventListener('click',e=>{
+  const b=e.target.closest('[data-fid]'),c=b&&feed&&feed.claims.find(x=>x.id===b.dataset.fid);if(!c)return;
+  state.feedAuto=false;useClaim(c);save();syncCounter();drawPreview();renderFeed();
+});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&state.feedSrc)feedTick()});
+
 function setTab(t){
   state.tab=t;save();const on=t==='counter';
   $('liveView').hidden=on;$('cview').hidden=!on;
@@ -815,6 +941,7 @@ $('tabLive').onclick=()=>setTab('live');$('tabCounter').onclick=()=>setTab('coun
 fontsReady.then(drawPreview);
 
 syncBtns();render();setTab(state.tab==='counter'?'counter':'live');
+renderFeed();if(state.feedSrc)feedTick();
 if(state.elapsed>0)$('startBtn').textContent='Retomar';
 tick();requestAnimationFrame(loop);
 document.fonts&&document.fonts.ready.then(drawPhoto);

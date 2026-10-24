@@ -37,6 +37,16 @@ As três saem em **feed** (1080 × 1350) ou **stories** (1080 × 1920), escolhid
 - **Puxar do ao vivo** conta as mentiras registradas da pessoa, usa o tempo do cronômetro e traz a mentira mais recente dela. Tudo pode ser editado à mão depois.
 - Em **Escolher do histórico** dá para trocar qual mentira aparece.
 
+### Checagem ao vivo (fontes externas)
+
+No painel **Checagem ao vivo**, escolha a **Fonte** e o **Candidato**. A página busca as checagens a cada 10 segundos e preenche sozinha o número de mentiras, os minutos de debate e a mentira em destaque (fala, verdade e fonte). Tudo continua editável.
+
+- **Rodapé** (aovivo.rodape.org): junta Lupa, Aos Fatos, Fato ou Fake e Estadão Verifica. Ele não traz o texto da verdade, então o campo vem como "a Lupa classificou a frase como “falso”". Vale reescrever antes de exportar.
+- **VAR Debate** (vardebate.com.br): traz a explicação e as fontes de cada checagem. Itens retirados ou em rechecagem ficam de fora.
+- Conta como mentira o que a fonte marca como falso. **Contar imprecisas como mentira** inclui exagerado, impreciso, insustentável etc.
+- **Usar sempre a checagem mais recente** troca a mentira em destaque quando chega uma nova. Clicar numa checagem da lista fixa aquela e desliga a troca automática.
+- O checagemaovivo.org não libera leitura por outros sites, por isso ainda não está na lista.
+
 ### Banco de fotos
 
 - As 12 fotos do Flávio já vêm embutidas no `index.html`, em preto e branco.
