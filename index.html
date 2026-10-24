@@ -168,8 +168,10 @@ details[open]{display:grid;gap:10px}
   .log{max-height:none;overflow:visible}
   #cview{grid-template-columns:minmax(0,1fr) minmax(460px,560px)}
   #cview .stage{overflow:auto;min-height:0;height:100%}
-  #cview .desk{grid-template-rows:auto auto minmax(0,1fr)}
-  #feedList{max-height:160px}
+  /* painel das peças rola inteiro: cada bloco no seu tamanho, nada espremido quando a fonte cresce */
+  #cview .desk{grid-template-rows:none;align-content:start;overflow-y:auto;overscroll-behavior:contain;padding-right:4px}
+  #cview .desk>.scroll{overflow:visible;min-height:auto}
+  #feedList{max-height:240px}
 }
 body.broadcast .desk{display:none}
 body.broadcast .wrap{grid-template-columns:minmax(0,min(560px,calc((100vh - 60px)*.8)));justify-content:center}
@@ -946,11 +948,12 @@ async function feedTick(){
   catch(e){if(gen!==feedGen)return;feedErr='sem resposta da fonte, tentando de novo'}
   renderFeed();feedTimer=setTimeout(feedTick,document.hidden?6e4:1e4);
 }
-$('feedSrc').onchange=e=>{state.feedSrc=e.target.value;feed=null;feedErr='';feedGen++;save();renderFeed();feedTick()};
+const showFeedP=()=>requestAnimationFrame(()=>$('feedP').scrollIntoView({block:'nearest',behavior:'smooth'}));
+$('feedSrc').onchange=e=>{state.feedSrc=e.target.value;feed=null;feedErr='';feedGen++;save();renderFeed();feedTick();if(state.feedSrc)showFeedP()};
 $('feedSpk').onchange=e=>{
   const o=e.target.selectedOptions[0];state.feedSpk=e.target.value?o.textContent:'';state.feedSpkName=state.feedSpk;
   if(state.feedSpk)state.counter.name=state.feedSpk.trim().split(/\s+/)[0];
-  state.feedUsed='';save();applyFeed(true);syncCounter();drawPreview();renderFeed();
+  state.feedUsed='';save();applyFeed(true);syncCounter();drawPreview();renderFeed();showFeedP();
 };
 $('feedPartial').onchange=e=>{state.feedPartial=e.target.checked;forgetSeen();save();applyFeed(false);renderFeed()};
 $('feedAuto').onchange=e=>{state.feedAuto=e.target.checked;save();if(e.target.checked)applyFeed(true);renderFeed()};
